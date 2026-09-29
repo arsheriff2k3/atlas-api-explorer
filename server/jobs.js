@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { runAnalysis } from './agent.js';
 // Single Node deployment: jobs survive Next route invocations and hot reloads.
 // Distributed deployment requires a durable queue and shared storage (see README).
-export const jobs = globalThis.__atlasJobs ||= new Map();
+export const jobs = globalThis.__apiPassageJobs ||= new Map();
 export function createJob(body,userId) {
  const urls=body.urls;
  if(!Array.isArray(urls)||!urls.length||urls.length>4||urls.some(u=>typeof u!=='string'||u.length>2048||!/^https?:\/\//i.test(u)))throw new Error('Enter one to four valid HTTP(S) documentation URLs.');

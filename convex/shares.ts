@@ -27,7 +27,7 @@ export const create=mutation({
   const project=await ctx.db.query('analyses').withIndex('by_userId_and_sourceKey',q=>q.eq('userId',user.tokenIdentifier).eq('sourceKey',sourceKey)).first();
   if(!project)throw new ConvexError('Save this project before sharing it.');
   const token=newToken();
-  await ctx.db.insert('shares',{ownerId:user.tokenIdentifier,ownerName:user.name||user.email||'An Atlas user',sourceKey,name:project.name,token,revoked:false,createdAt:Date.now()});
+  await ctx.db.insert('shares',{ownerId:user.tokenIdentifier,ownerName:user.name||user.email||'An APIPassage user',sourceKey,name:project.name,token,revoked:false,createdAt:Date.now()});
   return token;
  },
 });
@@ -51,6 +51,6 @@ export const open=query({
   if(!row||row.revoked)return null;
   const project=await ctx.db.query('analyses').withIndex('by_userId_and_sourceKey',q=>q.eq('userId',row.ownerId).eq('sourceKey',row.sourceKey)).order('desc').first();
   if(!project)return null;
-  return {name:project.name,ownerName:row.ownerName,createdAt:project.createdAt,url:await ctx.storage.getUrl(project.storageId)};
+  return {name:project.name,ownerName:row.ownerName==='An Atlas user'?'An APIPassage user':row.ownerName,createdAt:project.createdAt,url:await ctx.storage.getUrl(project.storageId)};
  },
 });

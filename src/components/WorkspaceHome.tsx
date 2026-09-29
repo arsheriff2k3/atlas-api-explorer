@@ -11,7 +11,7 @@ export default function WorkspaceHome({history,ready,running,onNew,onOpen,onStar
   const savedKeys=new Set(history.map(item=>item.sourceKey));
   const examples=EXAMPLE_PROJECTS.filter(template=>!savedKeys.has(sourceKeyFor(template.urls)));
   return <section className="project-workspace" aria-labelledby="workspace-title">
-    <div className="project-workspace-heading"><div><span className="workspace-eyebrow"><Sparkles size={13}/> YOUR API WORKSPACE</span><h2 id="workspace-title">Your projects<span>.</span></h2><p>Every analysis is saved to your account once. Open a project to explore its map, scenarios, and flows, or start a new one from any documentation or specification URL.</p></div><button className="outline-button" onClick={onNew}><Plus size={15}/>New project</button></div>
+    <div className="project-workspace-heading"><div><span className="workspace-eyebrow"><Sparkles size={13}/> YOUR API WORKSPACE</span><h2 id="workspace-title">Your projects<span>.</span></h2><p>See the path through every API. Open a project to explore its map, scenarios, and flows, or start a new one from any documentation or specification URL. Your analyses stay saved to your account.</p></div><button className="outline-button" onClick={onNew}><Plus size={15}/>New project</button></div>
     {!ready&&<div className="workspace-note"><span><LoaderCircle size={15} className="spin"/>Loading your saved projects…</span></div>}
     {ready&&<div className="project-grid">
       {history.map(item=>{

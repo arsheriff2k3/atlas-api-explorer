@@ -16,7 +16,7 @@ export async function tryRequest({ url, method, headers = {}, body = null }, sig
   if (!METHODS.has(verb)) throw new Error('Unsupported HTTP method.');
   if (typeof url !== 'string' || url.length > 4096 || /\{[^}]+\}/.test(url)) throw new Error('Fill in every {placeholder} in the URL first.');
   const { url: target, address, addresses } = await validateUrl(url);
-  const outgoing = { 'User-Agent': 'AtlasAPIExplorer/1.0 (try it)', Accept: 'application/json, */*', 'Accept-Encoding': 'gzip, br, deflate' };
+  const outgoing = { 'User-Agent': 'APIPassage/1.0 (try it)', Accept: 'application/json, */*', 'Accept-Encoding': 'gzip, br, deflate' };
   for (const [name, value] of Object.entries(headers || {})) {
     if (typeof value !== 'string' || !/^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/.test(name) || BLOCKED_HEADERS.test(name) || /[\r\n]/.test(value)) continue;
     outgoing[name] = value;

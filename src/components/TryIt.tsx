@@ -2,15 +2,16 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, LoaderCircle, Play } from 'lucide-react';
 import type { Scenario } from '../scenarios';
+import { readBrandStorage } from '../brandStorage';
 
 type Auth='none'|'bearer'|'basic'|'header';
-const PREFS='atlas-try-prefs';
+const PREFS='apipassage-try-prefs';
 
-// Sends the scenario's request to the real API through the Atlas server (public hosts
+// Sends the scenario's request to the real API through the APIPassage server (public hosts
 // only). Credentials stay in this page's memory and are sent with each request only.
 export default function TryIt({scenario,servers,sourceKey}:{scenario:Scenario;servers:string[];sourceKey:string}){
  const {operation}=scenario;
- const saved=useMemo(()=>{try{return JSON.parse(localStorage.getItem(PREFS)||'{}')[sourceKey]||{}}catch{return {}}},[sourceKey]);
+ const saved=useMemo(()=>{try{return JSON.parse(readBrandStorage(PREFS,'atlas-try-prefs')||'{}')[sourceKey]||{}}catch{return {}}},[sourceKey]);
  const [baseUrl,setBaseUrl]=useState<string>(saved.baseUrl||servers[0]||'');
  const [auth,setAuth]=useState<Auth>(saved.auth||'bearer');const [headerName,setHeaderName]=useState<string>(saved.headerName||'X-API-Key');
  const [secret,setSecret]=useState('');const [password,setPassword]=useState('');
@@ -33,7 +34,7 @@ export default function TryIt({scenario,servers,sourceKey}:{scenario:Scenario;se
    if(auth==='bearer'&&secret)headers.Authorization=`Bearer ${secret}`;
    if(auth==='basic'&&secret)headers.Authorization=`Basic ${btoa(`${secret}:${password}`)}`;
    if(auth==='header'&&secret&&headerName)headers[headerName]=secret;
-   try{const prefs=JSON.parse(localStorage.getItem(PREFS)||'{}');prefs[sourceKey]={baseUrl,auth,headerName,arrayStyle};localStorage.setItem(PREFS,JSON.stringify(prefs))}catch{}
+   try{const prefs=JSON.parse(readBrandStorage(PREFS,'atlas-try-prefs')||'{}');prefs[sourceKey]={baseUrl,auth,headerName,arrayStyle};localStorage.setItem(PREFS,JSON.stringify(prefs))}catch{}
    const response=await fetch('/api/try',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,method:operation.method,headers,body:hasBody?parsed:null,contentType:operation.contentType||'application/json',arrayStyle})});
    const data=await response.json();
    if(!response.ok)throw new Error(data.error||'The request failed.');

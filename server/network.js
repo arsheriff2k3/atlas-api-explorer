@@ -34,7 +34,7 @@ export async function fetchDocument(input, signal, redirects = 0) {
     // Every validated address is offered so one unreachable CDN node (seen on raw.githubusercontent.com)
     // falls through to the next instead of hanging the whole analysis.
     const req = (url.protocol === 'https:' ? https : http).get(url, {
-      signal, headers: { 'User-Agent': 'AtlasAPIExplorer/1.0 (documentation analysis)', Accept: 'application/json,text/markdown,text/html,text/plain,application/yaml,*/*', 'Accept-Encoding': 'gzip, br, deflate' },
+      signal, headers: { 'User-Agent': 'APIPassage/1.0 (documentation analysis)', Accept: 'application/json,text/markdown,text/html,text/plain,application/yaml,*/*', 'Accept-Encoding': 'gzip, br, deflate' },
       autoSelectFamily: true, autoSelectFamilyAttemptTimeout: 2000,
       lookup: (_host, options, callback) => options.all ? callback(null, addresses) : callback(null, address.address, address.family),
     }, res => {

@@ -610,6 +610,48 @@
 :root[data-theme="dark"] .share-head strong{color:#b4ade1}
 :root[data-theme="dark"] .share-panel>p{color:#a3a5ae}
 :root[data-theme="dark"] .share-link{background:#181623}
+:root[data-theme="dark"] .brand-wordmark>span{color:#806ce5}
+:root[data-theme="dark"] .sidebar .main-nav a{color:#a3a5ae}
+:root[data-theme="dark"] .sidebar .main-nav a:hover,:root[data-theme="dark"] .sidebar .main-nav a.active{background:#130c2f;color:#8d7ad7}
+:root[data-theme="dark"] .analysis-heading-actions>.outline-button{background:#7357db;color:#a8a8a8;border-color:#7357db}
+:root[data-theme="dark"] .analysis-heading-actions>.outline-button:hover{background:#7a61d1;color:#a8a8a8}
+:root[data-theme="dark"] .project-menu,:root[data-theme="dark"] .view-more-menu{background:#171717;border:1px solid #26232f;box-shadow:0 16px 36px #b6b1c821}
+:root[data-theme="dark"] .project-menu button,:root[data-theme="dark"] .view-more-menu button{color:#a2a3ae}
+:root[data-theme="dark"] .project-menu button:hover,:root[data-theme="dark"] .view-more-menu button:hover,:root[data-theme="dark"] .view-more-menu button.active{background:#130c2f;color:#8d7ad7}
+:root[data-theme="dark"] .project-menu-divider{background:#24222c}
+:root[data-theme="dark"] .analysis-summary{border-top:1px solid #201d28}
+:root[data-theme="dark"] .analysis-summary summary{color:#a2a5af}
+:root[data-theme="dark"] .analysis-summary summary span{color:#a3a2af}
+:root[data-theme="dark"] .analysis-summary .metrics-row{border-top:1px solid #1e1b25}
+:root[data-theme="dark"] .coverage-link{color:#937cd5}
+:root[data-theme="dark"] .view-more-button{color:#a2a5ae}
+:root[data-theme="dark"] .view-more-button:hover,:root[data-theme="dark"] .view-more-button.active{color:#8d78d9}
+:root[data-theme="dark"] .view-more-button.active{border-bottom-color:#7352e0}
+:root[data-theme="dark"] .map-mode{background:#1d1927;border:1px solid #25212f}
+:root[data-theme="dark"] .map-mode button{color:#a4a4ad}
+:root[data-theme="dark"] .map-mode button.active{background:#171717;color:#907bd6;box-shadow:0 1px 4px #ababc218}
+:root[data-theme="dark"] .graph-filter-toggle{border:1px solid #272430;background:#171717;color:#a2a4ae}
+:root[data-theme="dark"] .graph-filter-toggle:hover,:root[data-theme="dark"] .graph-filter-toggle.active{border-color:#32265b;color:#907bd6}
+:root[data-theme="dark"] .graph-filter-toggle span{background:#1d1531;color:#907bd6}
+:root[data-theme="dark"] .graph-primary-actions .expand-button{border:1px solid #272430}
+:root[data-theme="dark"] .graph-filter-panel{border-bottom:1px solid #211d2c;background:#100a28}
+:root[data-theme="dark"] .graph-filter-panel label,:root[data-theme="dark"] .filter-button-group{color:#a5a4ad}
+:root[data-theme="dark"] .graph-filter-panel select{border:1px solid #292730;background:#171717;color:#a2a4af}
+:root[data-theme="dark"] .filter-button-group button,:root[data-theme="dark"] .filter-reset{border:1px solid #292730;background:#171717;color:#a2a4ae}
+:root[data-theme="dark"] .filter-button-group button.active{background:#1a1231;border-color:#281c46;color:#907bd6}
+:root[data-theme="dark"] .filter-reset{color:#937cd5}
+:root[data-theme="dark"] .active-filter-chips{border-bottom:1px solid #201d28}
+:root[data-theme="dark"] .active-filter-chips button{border:1px solid #231c38;background:#140b2c;color:#9583ce}
+:root[data-theme="dark"] .graph-order-hint button{color:#907bd6}
+:root[data-theme="dark"] .entity-stepper,:root[data-theme="dark"] .full-graph .entity-stepper{border-top:1px solid #22202b;background:#171717;color:#a3a3ae}
+:root[data-theme="dark"] .stepper-summary>span{color:#9686ca}
+:root[data-theme="dark"] .stepper-summary button{color:#b1b4c3}
+:root[data-theme="dark"] .stepper-summary button svg{color:#917bd5}
+:root[data-theme="dark"] .stepper-summary small{color:#a3a4ad}
+:root[data-theme="dark"] .stepper-list-toggle{border:1px solid #282531;background:#171717;color:#a49bb5}
+:root[data-theme="dark"] .entity-stepper-drawer{background:#171717;border:1px solid #272331;box-shadow:0 18px 45px #b6b1c82b}
+:root[data-theme="dark"] .stepper-drawer-title{color:#a9aab7}
+:root[data-theme="dark"] .stepper-drawer-title span{color:#a4a3ad}
 :root[data-theme="dark"]{color-scheme:dark}:root[data-theme="dark"] body{background:#14131c;color:#e7e5f0}
 :root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] textarea{background:#1d1b28;color:#e7e5f0;border-color:#34304a}
 :root[data-theme="dark"] .react-flow__controls-button{background:#1d1b28;fill:#d8d4e8;border-color:#34304a}:root[data-theme="dark"] .react-flow__minimap{background:#1d1b28!important}

@@ -163,6 +163,6 @@ export async function runAnalysis(urls, options, progress, signal) {
   normalizeAnalysis(merged);
   // Every source format must land in the same schema; a violation is a bug, not a user error.
   const problems=validateAnalysis(merged);
-  if(problems.length){console.error('[atlas] analysis schema violations',problems);merged.warnings.push(`Internal check: ${problems.length} record(s) did not match the analysis schema (${problems[0]}).`);}
+  if(problems.length){console.error('[apipassage] analysis schema violations',problems);merged.warnings.push(`Internal check: ${problems.length} record(s) did not match the analysis schema (${problems[0]}).`);}
   return merged;
 }

@@ -1,12 +1,16 @@
-# Atlas API Explorer
+# APIPassage
 
-Atlas is a local Next.js app for turning public API documentation into an interactive dependency map. Paste a documentation URL or a supported API specification, watch the analysis progress, then inspect entities, operations, ID lineage, design patterns, source coverage, and a guided 30-minute study path. The workspace includes 2D and optional 3D graph views.
+**See the path through every API.**
+
+APIPassage is a local Next.js app for turning public API documentation into an interactive dependency map. Paste a documentation URL or a supported API specification, watch the analysis progress, then inspect entities, operations, ID lineage, design patterns, source coverage, and a guided 30-minute study path. The workspace includes 2D and optional 3D graph views.
 
 ## Run locally
 
 Requires Node.js 20.9+ and npm. Analysis uses published API specifications and embedded endpoint definitions. No AI provider is required.
 
-Atlas requires sign-in with [Clerk](https://clerk.com) and saves every completed analysis to your account in [Convex](https://convex.dev), so each project is generated once and reopens from any browser.
+APIPassage requires sign-in with [Clerk](https://clerk.com) and saves every completed analysis to your account in [Convex](https://convex.dev), so each project is generated once and reopens from any browser.
+
+The former Atlas browser preferences are copied to APIPassage keys when opened. Older `atlas-sessions` IndexedDB analyses still import into your account. Internal `x-atlas-*` analysis fields remain readable for saved-map compatibility; project IDs, source keys, and share tokens are unchanged.
 
 1. In the Clerk dashboard, enable the **Convex** integration and copy your Frontend API URL.
 2. Link Convex and set the Clerk issuer on the deployment:
@@ -25,7 +29,7 @@ Atlas requires sign-in with [Clerk](https://clerk.com) and saves every completed
    NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
    ```
 
-Then start Atlas, keeping `npx convex dev` running in another terminal:
+Then start APIPassage, keeping `npx convex dev` running in another terminal:
 
 ```bash
 npm install
@@ -80,7 +84,7 @@ The **Scenarios** tab answers "how do I create or change this entity?" one endpo
 - **Compare with your payload** maps a pasted payload (e.g. from CRM Dynamics) to the endpoint's fields by name, known synonyms, and word overlap; shows missing required fields, values that need a transform, and unused fields; and builds the resulting request. Mappings can be overridden and are saved.
 - **Try it** sends the scenario's request to the real API with credentials you enter (never stored). Only public hosts are reachable, redirects are not followed, and responses are capped at 256 KB. Use a test or sandbox account.
 - **Link reviews**: confirm or reject inferred links in the link details. Confirmed links count as documented; rejected links leave the map, chains, scenarios, and flows (restore them from ID lineage → Rejected by you).
-- **Share** creates a read-only link for signed-in Atlas users that always shows your latest run; revoke it any time.
+- **Share** creates a read-only link for signed-in APIPassage users that always shows your latest run; revoke it any time.
 - **Export**: each scenario downloads as Markdown with a Mermaid logic-flow diagram.
 - Light, dark, or system theme (sidebar). `src/theme-dark.css` is generated from `styles.css` by `pnpm theme` (runs before `dev` and `build`).
 
@@ -88,12 +92,12 @@ The **Scenarios** tab answers "how do I create or change this entity?" one endpo
 
 - **Documented** links come from explicit schema references, links, or supporting field descriptions.
 - **Inferred** links are candidates based on ID names or possible producer/consumer endpoint matches. Verify them in source documentation before using them in an integration.
-- The **Sources** view states fetch limits, pages and specifications read, warnings, and unresolved coverage. Atlas cannot prove completeness beyond the sources it processed.
+- The **Sources** view states fetch limits, pages and specifications read, warnings, and unresolved coverage. APIPassage cannot prove completeness beyond the sources it processed.
 - The graph initially shows a manageable slice. The numbered entity guide defaults to **Prerequisites first**; switch to **Most connected** or **A–Z** if that better fits your task. Search, filters, and **Show 30 more** expose larger maps. The full-screen control works in 2D and 3D; 3D is an exploratory view of the same analysis.
 
 ## Specification adapters
 
-Atlas detects formats from document content, not just file names or documentation hostnames. The crawler starts with published API catalogs, common specification URLs, `llms.txt`, and links in documentation pages. Each adapter converts its format to a common operation and schema model before resource grouping. This is structural parsing of published API definitions.
+APIPassage detects formats from document content, not just file names or documentation hostnames. The crawler starts with published API catalogs, common specification URLs, `llms.txt`, and links in documentation pages. Each adapter converts its format to a common operation and schema model before resource grouping. This is structural parsing of published API definitions.
 
 | Format | Current extraction | Important limit |
 | --- | --- | --- |
@@ -108,7 +112,7 @@ Atlas detects formats from document content, not just file names or documentatio
 | [WSDL 1.1/2.0 XML](https://www.w3.org/TR/wsdl) | Port/interface operation inventory. | XSD imports, bindings and SOAP payload fields are not expanded. |
 | [Smithy JSON AST](https://smithy.io/2.0/spec/index.html) | Shapes and operations, including HTTP method/URI traits when present. | Smithy IDL must first be compiled to JSON AST; external model files are not resolved. |
 
-For a public ReadMe root or custom domain, Atlas first looks for a published API catalog or full OpenAPI definition, then follows `llms.txt` and Markdown reference pages, combining endpoint fragments. Generic prose pages are listed as read sources but are not interpreted into entities or rules. Multiple related public URLs retain provenance and show cross-API naming matches as unverified candidates.
+For a public ReadMe root or custom domain, APIPassage first looks for a published API catalog or full OpenAPI definition, then follows `llms.txt` and Markdown reference pages, combining endpoint fragments. Generic prose pages are listed as read sources but are not interpreted into entities or rules. Multiple related public URLs retain provenance and show cross-API naming matches as unverified candidates.
 
 The adapter only **reads** published documents; it does not call documented business endpoints. An operation count is an inventory of parsed declarations, not proof that requests work. A root URL cannot guarantee a complete inventory when a publisher hides, splits, or rate-limits its specification. Review the Sources view for fetch and format limits.
 

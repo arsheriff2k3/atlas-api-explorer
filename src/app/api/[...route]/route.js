@@ -10,12 +10,12 @@ export const dynamic='force-dynamic';
 export const maxDuration=300;
 const json=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 
-const trying=globalThis.__atlasTrying ||= new Set();
+const trying=globalThis.__apiPassageTrying ||= new Set();
 async function tryIt(request,userId){
  const {url,method,headers,body,contentType,arrayStyle}=await readBody(request,1200000);
  if(trying.has(userId))return json({error:'A request is already in flight. Wait for it to finish.'},429);
  // The app itself is never a target: requests go only to the API being explored.
- try{if(new URL(url).host===request.headers.get('host'))return json({error:'Requests to Atlas itself are not allowed.'},400)}catch{return json({error:'Enter a full https:// URL.'},400)}
+ try{if(new URL(url).host===request.headers.get('host'))return json({error:'Requests to APIPassage itself are not allowed.'},400)}catch{return json({error:'Enter a full https:// URL.'},400)}
  let encoded=null;const outgoing={...(headers||{})};
  if(body!==null&&body!==undefined&&body!==''){
   if(/x-www-form-urlencoded/i.test(contentType||'')){encoded=typeof body==='string'?body:formEncode(body,arrayStyle==='index'?'index':'suffix');outgoing['Content-Type']='application/x-www-form-urlencoded'}
@@ -31,7 +31,7 @@ async function dispatch(request,context){
  try{
   if(method!=='GET'&&request.headers.get('origin')&&new URL(request.headers.get('origin')).host!==request.headers.get('host'))return json({error:'Cross-origin requests are not allowed.'},403);
   const {userId}=await auth();
-  if(!userId)return json({error:'Sign in to use Atlas.'},401);
+  if(!userId)return json({error:'Sign in to use APIPassage.'},401);
   if(route[0]==='try'&&route.length===1&&method==='POST')return await tryIt(request,userId);
   if(route[0]!=='analyses')return json({error:'Route not found.'},404);
   if(route[1]==='normalize'&&route.length===2&&method==='POST'){

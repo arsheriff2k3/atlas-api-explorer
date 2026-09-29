@@ -2,7 +2,7 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 
-export const TOUR_KEY='atlas-tour-done';
+export const TOUR_KEY='apipassage-tour-done';
 const STEPS=[
  {selector:'.project-nav',title:'Your projects',text:'Every analysis is saved to your account. Switch projects here; each opens exactly where you left it.'},
  {selector:'.tab-buttons',title:'Views of the same API',text:'The dependency map, ID lineage, endpoints, and scenarios all read the same saved analysis.'},
