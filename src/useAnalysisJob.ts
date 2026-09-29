@@ -11,25 +11,24 @@ interface Callbacks {
 
 // Starts a server-side analysis job, polls it until it finishes, and supports cancel.
 // Callbacks are read through a ref so the poll loop lives exactly as long as the job.
-export function useAnalysisJob({maxPages, getAiKey, ...callbacks}: Callbacks & {maxPages: number; getAiKey: () => Promise<string | null>}) {
+export function useAnalysisJob({maxPages, ...callbacks}: Callbacks & {maxPages: number}) {
  const [job, setJob] = useState<Job | null>(null);
  const [starting, setStarting] = useState(false);
  const replaceTarget = useRef<string | null>(null);
  const handlers = useRef(callbacks);
  useEffect(() => { handlers.current = callbacks; });
 
- const launch = useCallback(async (urls: string[], useAI: boolean, replaceId?: string) => {
+ const launch = useCallback(async (urls: string[], replaceId?: string) => {
   handlers.current.onStart(); setStarting(true);
   try {
-   const aiKey = useAI ? await getAiKey().catch(() => null) : null;
-   const response = await fetch('/api/analyses', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({urls, maxPages, useAI, aiKey})});
+   const response = await fetch('/api/analyses', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({urls, maxPages})});
    const data = await response.json();
    if (!response.ok) throw new Error(data.error);
    replaceTarget.current = replaceId || null;
    setJob({id: data.id, status: 'running', progress: 1, stage: 'discover', message: 'Starting your analysis agent…', events: []});
   } catch (error) { handlers.current.onError((error as Error).message); }
   finally { setStarting(false); }
- }, [maxPages, getAiKey]);
+ }, [maxPages]);
 
  useEffect(() => {
   if (!job?.id || job.status !== 'running') return;

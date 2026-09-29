@@ -4,16 +4,7 @@ Atlas is a local Next.js app for turning public API documentation into an intera
 
 ## Run locally
 
-Requires Node.js 20.9+ and npm. AI features (reading prose documentation, **Ask Atlas**) are connected per user in **Settings → AI reasoning**:
-
-- **Connect with ChatGPT**  -  on a local development server only, runs the official `codex login --device-auth` for this computer's Codex CLI and shows you the link and one-time code. Requires the [Codex CLI](https://developers.openai.com/codex/cli).
-- **Your OpenAI API key**  -  works on any Atlas server. The key is verified with OpenAI, AES-256-GCM encrypted on the Next.js server, and only the ciphertext is stored in Convex. Enable it by adding a server secret to `.env.local`:
-
-  ```bash
-  echo "ATLAS_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> .env.local
-  ```
-
-A saved API key is used before the local Codex login. A hosted (production) server never uses its own Codex login for visitors.
+Requires Node.js 20.9+ and npm. Analysis uses published API specifications and embedded endpoint definitions. No AI provider is required.
 
 Atlas requires sign-in with [Clerk](https://clerk.com) and saves every completed analysis to your account in [Convex](https://convex.dev), so each project is generated once and reopens from any browser.
 
@@ -41,7 +32,7 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:3000>. No API key is required for local Codex sign-in. A direct supported specification URL can be analyzed structurally without Codex. `CODEX_MODEL` in `.env.local` is an optional override; leave it unset to use the Codex default. The app never sends a provider credential to the browser.
+Open <http://localhost:3000>. Paste a supported specification URL or a documentation site that publishes one.
 
 The workspace at <http://localhost:3000/> lists both built-in projects. You can open them directly:
 
@@ -79,7 +70,7 @@ The **Scenarios** tab answers "how do I create or change this entity?" one endpo
 
 - **Build order**  -  every record that must exist first, ending with the call itself. Click a step to see why it is needed (which ID field requires it and the rules that mention it), how to create it (endpoint, IDs from earlier steps, values you provide), and the cases at that step.
 - **Cases**  -  type fields and conditions that change the logic, such as Item type `plan` / `addon` / `charge`. Selecting one filters the rules and highlights its fields.
-- **Rules**  -  sentences from the specification (`SPEC`). **Check rules with AI** reads the endpoint's documentation page (its own reference page, or a `sitemap.xml` match; Markdown twins preferred) and adds business rules per case. Rules whose quote is found verbatim on the page are marked **Docs · quoted**; the rest are **AI · inferred**. Results are saved to your account per project and endpoint, so each is generated once.
+- **Rules**  -  sentences extracted from the specification and associated with each case.
 - **Request / Response**  -  the smallest valid payload (linked IDs as placeholders, one option per "choose one" group) and fields grouped as Required, Choose one, Conditional, and Optional.
 
 ## Projects, flows, and sharing
@@ -102,7 +93,7 @@ The **Scenarios** tab answers "how do I create or change this entity?" one endpo
 
 ## Specification adapters
 
-Atlas detects formats from document content, not just file names or documentation hostnames. The crawler starts with published API catalogs, common specification URLs, `llms.txt`, and links in documentation pages. Each adapter converts its format to a common operation and schema model before resource grouping. This is structural parsing; Codex is optional and only interprets prose pages and questions.
+Atlas detects formats from document content, not just file names or documentation hostnames. The crawler starts with published API catalogs, common specification URLs, `llms.txt`, and links in documentation pages. Each adapter converts its format to a common operation and schema model before resource grouping. This is structural parsing of published API definitions.
 
 | Format | Current extraction | Important limit |
 | --- | --- | --- |
@@ -117,7 +108,7 @@ Atlas detects formats from document content, not just file names or documentatio
 | [WSDL 1.1/2.0 XML](https://www.w3.org/TR/wsdl) | Port/interface operation inventory. | XSD imports, bindings and SOAP payload fields are not expanded. |
 | [Smithy JSON AST](https://smithy.io/2.0/spec/index.html) | Shapes and operations, including HTTP method/URI traits when present. | Smithy IDL must first be compiled to JSON AST; external model files are not resolved. |
 
-For a public ReadMe root or custom domain, Atlas first looks for a published API catalog or full OpenAPI definition, then follows `llms.txt` and Markdown reference pages, combining endpoint fragments. For generic HTML or Markdown documentation, it follows discoverable links within a bounded crawl and can use signed-in local Codex to interpret prose. Multiple related public URLs retain provenance and show cross-API naming matches as unverified candidates.
+For a public ReadMe root or custom domain, Atlas first looks for a published API catalog or full OpenAPI definition, then follows `llms.txt` and Markdown reference pages, combining endpoint fragments. Generic prose pages are listed as read sources but are not interpreted into entities or rules. Multiple related public URLs retain provenance and show cross-API naming matches as unverified candidates.
 
 The adapter only **reads** published documents; it does not call documented business endpoints. An operation count is an inventory of parsed declarations, not proof that requests work. A root URL cannot guarantee a complete inventory when a publisher hides, splits, or rate-limits its specification. Review the Sources view for fetch and format limits.
 

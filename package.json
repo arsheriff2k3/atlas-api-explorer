@@ -19,7 +19,6 @@
   "dependencies": {
     "@clerk/nextjs": "^7.9.5",
     "@dagrejs/dagre": "^1.1.5",
-    "@openai/codex-sdk": "^0.156.1",
     "@xyflow/react": "^12.8.5",
     "cheerio": "^1.1.2",
     "convex": "^1.46.0",

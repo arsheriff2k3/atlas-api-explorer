@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { ReactFlow, Background, BackgroundVariant, Controls, Handle, MarkerType, Position, ReactFlowProvider } from '@xyflow/react';
 import type { Edge, Node, NodeProps } from '@xyflow/react';
 import dagre from '@dagrejs/dagre';
-import { CheckCircle2, CircleHelp, GitFork, Play, PlusCircle, Send, Sparkles } from 'lucide-react';
+import { CheckCircle2, CircleHelp, GitFork, Play, PlusCircle, Send } from 'lucide-react';
 import type { FlowNode, LogicFlow } from '../scenarioFlow';
 import '@xyflow/react/dist/style.css';
 
@@ -15,7 +15,7 @@ function FlowBox({data}:NodeProps<Node<{node:FlowNode;active:boolean}>>){
  const {node,active}=data;const Icon=ICONS[node.kind];
  return <div className={`flow-box ${node.kind} ${active?'active':''}`} style={{width:WIDTH}}>
   <Handle type="target" position={Position.Top}/>
-  <div className="flow-box-title"><Icon size={13}/><strong>{node.title}</strong>{node.source==='ai'&&<Sparkles size={11} aria-label="From the AI rule check"/>}</div>
+  <div className="flow-box-title"><Icon size={13}/><strong>{node.title}</strong></div>
   {node.lines.slice(0,4).map((line,index)=><p key={index}>{line}</p>)}
   <Handle type="source" position={Position.Bottom}/>
  </div>;
@@ -43,7 +43,7 @@ export default function LogicFlowView({flow,explain}:{flow:LogicFlow;explain:(no
  const node=flow.nodes.find(item=>item.id===selected)||null;
  const decisions=flow.nodes.filter(item=>item.kind==='decision').length;
  return <div className="logic-flow">
-  <div className="logic-flow-legend"><span className="check">Prerequisite check</span><span className="create">Create first</span><span className="decision">Decision</span><span className="branch">Branch outcome</span><span className="muted">{decisions?`${decisions} decision${decisions>1?'s':''}`:'No decisions found in the specification. Run the AI rule check for the business logic.'}</span></div>
+  <div className="logic-flow-legend"><span className="check">Prerequisite check</span><span className="create">Create first</span><span className="decision">Decision</span><span className="branch">Branch outcome</span><span className="muted">{decisions?`${decisions} decision${decisions>1?'s':''}`:'No decisions found in the specification.'}</span></div>
   <div className="logic-flow-canvas" style={{height:Math.min(760,Math.max(360,flow.nodes.length*62))}}><ReactFlowProvider><Inner flow={flow} onSelect={setSelected} selected={selected}/></ReactFlowProvider></div>
   {node?<div className="logic-flow-detail"><strong>{node.title}</strong>{node.lines.map((line,index)=><p key={index}>{line}</p>)}{explain(node)}</div>:<p className="small muted">Click any box to see its explanation.</p>}
  </div>;

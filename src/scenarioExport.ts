@@ -2,8 +2,6 @@ import type { LogicFlow } from './scenarioFlow.ts';
 import type { Scenario } from './scenarios.ts';
 import type { PayloadComparison } from './payloadCompare.ts';
 
-interface ExportRule { text: string; field?: string; appliesTo?: string; quote?: string; source?: string; status?: string }
-interface ExportAi { summary: string; rules: ExportRule[]; sources: string[]; generatedAt: string }
 interface ExportStep { name: string; stage: string; endpoint: string | null }
 
 const esc = (text: string) => text.replace(/"/g, "'").replace(/[\n\r]+/g, ' ').replace(/[[\]{}()<>|]/g, ' ').slice(0, 90);
@@ -18,12 +16,11 @@ export function flowToMermaid(flow: LogicFlow): string {
   return lines.join('\n');
 }
 
-export function scenarioMarkdown({scenario, flow, steps, ai, comparison, comparisonLabel, apiName}: {scenario: Scenario; flow: LogicFlow; steps: ExportStep[]; ai: ExportAi | null; comparison: PayloadComparison | null; comparisonLabel: string; apiName: string}): string {
+export function scenarioMarkdown({scenario, flow, steps, comparison, comparisonLabel, apiName}: {scenario: Scenario; flow: LogicFlow; steps: ExportStep[]; comparison: PayloadComparison | null; comparisonLabel: string; apiName: string}): string {
   const {operation} = scenario;
   const out: string[] = [];
   out.push(`# ${operation.name}`, '', `**${apiName}** · \`${operation.method} ${operation.path}\` · target entity: **${scenario.entity.name}**`, '');
   if (operation.description) out.push(operation.description.slice(0, 1200), '');
-  if (ai) out.push('## Summary', '', ai.summary, '', `_AI rule check, ${new Date(ai.generatedAt).toLocaleDateString()}. Sources: ${ai.sources.join(', ') || 'none'}_`, '');
   out.push('## Logic flow', '', '```mermaid', flowToMermaid(flow), '```', '');
   out.push('## Build order', '', ...steps.map((step, index) => `${index + 1}. **${step.name}**  -  ${step.stage}${step.endpoint ? ` (\`${step.endpoint}\`)` : ''}`), '');
   if (scenario.cases.length) {
@@ -31,10 +28,10 @@ export function scenarioMarkdown({scenario, flow, steps, ai, comparison, compari
     for (const item of scenario.cases) out.push(`- **${item.label}**: ${item.values.map(value => `\`${value.value}\`${value.rules.length ? ` (${value.rules.length} rule${value.rules.length > 1 ? 's' : ''})` : ''}`).join(', ')}`);
     out.push('');
   }
-  const rules: ExportRule[] = [...(ai?.rules || []), ...scenario.rules.map(rule => ({text: rule.text, field: rule.field, appliesTo: rule.appliesTo.join(', '), status: 'spec'}))];
+  const rules = scenario.rules.map(rule => ({text: rule.text, field: rule.field, appliesTo: rule.appliesTo.join(', ')}));
   if (rules.length) {
     out.push('## Rules', '', '| Source | Field | Applies to | Rule |', '| --- | --- | --- | --- |');
-    for (const rule of rules) out.push(`| ${rule.status === 'documented' ? 'Docs (quoted)' : rule.status === 'inferred' ? 'AI (inferred)' : 'Spec'} | ${rule.field ? `\`${rule.field}\`` : ''} | ${rule.appliesTo || 'all'} | ${rule.text.replace(/\|/g, '\\|')}${rule.quote ? `<br>> “${rule.quote.replace(/\|/g, '\\|').slice(0, 300)}”` : ''} |`);
+    for (const rule of rules) out.push(`| Spec | ${rule.field ? `\`${rule.field}\`` : ''} | ${rule.appliesTo || 'all'} | ${rule.text.replace(/\|/g, '\\|')} |`);
     out.push('');
   }
   out.push('## Minimal request', '', scenario.pathParams.length ? `Path parameters: ${scenario.pathParams.map(param => `\`{${param.name}}\``).join(', ')}` : '', '', '```json', JSON.stringify(scenario.payload, null, 2), '```', '');

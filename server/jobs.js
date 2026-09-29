@@ -3,8 +3,7 @@ import { runAnalysis } from './agent.js';
 // Single Node deployment: jobs survive Next route invocations and hot reloads.
 // Distributed deployment requires a durable queue and shared storage (see README).
 export const jobs = globalThis.__atlasJobs ||= new Map();
-// `ai` holds the caller's AI credentials for this run only; it is never stored on the job.
-export function createJob(body,userId,ai) {
+export function createJob(body,userId) {
  const urls=body.urls;
  if(!Array.isArray(urls)||!urls.length||urls.length>4||urls.some(u=>typeof u!=='string'||u.length>2048||!/^https?:\/\//i.test(u)))throw new Error('Enter one to four valid HTTP(S) documentation URLs.');
  urls.forEach(u=>new URL(u));
@@ -16,7 +15,7 @@ export function createJob(body,userId,ai) {
  const run=async()=>{
   const timeout=setTimeout(()=>controller.abort(new Error('Analysis exceeded the 10-minute runtime limit.')),600000);
   const update=(stage,progress,message,stats)=>{Object.assign(job,{stage,progress,message,stats});job.events.push({stage,progress,message,time:Date.now()});};
-  try{const result=await runAnalysis(urls,{maxPages:Math.min(60,Math.max(8,Number(body.maxPages)||24)),useAI:body.useAI!==false,ai},update,controller.signal);Object.assign(job,{status:'complete',progress:100,result,message:'Your API map is ready'});}
+  try{const result=await runAnalysis(urls,{maxPages:Math.min(60,Math.max(8,Number(body.maxPages)||24))},update,controller.signal);Object.assign(job,{status:'complete',progress:100,result,message:'Your API map is ready'});}
   catch(e){Object.assign(job,{status:controller.signal.aborted?'cancelled':'failed',error:e.message});}
   finally{clearTimeout(timeout);}
  };

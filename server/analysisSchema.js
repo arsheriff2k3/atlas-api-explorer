@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // The one shape every documentation format is normalized into (mirrors src/types.ts).
 // Extraction output is checked against it before it is returned or saved, so
-// OpenAPI, Postman, GraphQL, RAML, AsyncAPI, prose + AI, etc. are stored identically.
+// All supported specification formats are stored identically.
 export const SCHEMA_VERSION = 1;
 
 const Field = z.object({
@@ -29,7 +29,7 @@ export const Analysis = z.object({
   patterns: z.array(z.object({ name: z.string(), detail: z.string(), source: z.string(), inferred: z.boolean().optional() })),
   warnings: z.array(z.string()),
   sources: z.array(z.object({ url: z.string(), title: z.string(), kind: z.string(), status: z.string() })),
-  coverage: z.object({ pagesRead: z.number(), specifications: z.number(), discovered: z.number(), attempted: z.number(), pageLimit: z.number(), aiPages: z.number(), complete: z.boolean() }).passthrough(),
+  coverage: z.object({ pagesRead: z.number(), specifications: z.number(), discovered: z.number(), attempted: z.number(), pageLimit: z.number(), aiPages: z.number().optional(), complete: z.boolean() }).passthrough(),
   mode: z.string(), demo: z.boolean(), jobId: z.string().optional(), schemaVersion: z.number().optional(), docsUrl: z.string().nullable().optional(), servers: z.array(z.string()).optional(), changes: z.object({ comparedWith: z.string() }).passthrough().optional(),
 });
 
@@ -37,7 +37,7 @@ export const Analysis = z.object({
 export function normalizeAnalysis(analysis) {
   for (const operation of analysis.operations) {
     delete operation.entityNames;
-    // Prose (AI) operations carry no parameter location; path templates and GET inputs are inferable.
+    // Older saved operations can lack parameter locations; path templates and GET inputs are inferable.
     for (const input of operation.inputs) if (!input.location) {
       if (operation.path.includes(`{${input.name}}`)) input.location = 'path';
       else if (/^(?:GET|DELETE|HEAD)$/.test(operation.method)) input.location = 'query';

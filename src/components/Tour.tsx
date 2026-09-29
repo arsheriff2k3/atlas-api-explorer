@@ -8,7 +8,6 @@ const STEPS=[
  {selector:'.tab-buttons',title:'Views of the same API',text:'The dependency map, ID lineage, endpoints, and scenarios all read the same saved analysis.'},
  {selector:'.graph-filters',title:'Needs and Used by',text:'Select an entity, then trace everything it needs to be created, or everything that uses it.'},
  {selector:'.tab-buttons [data-tab="scenarios"]',title:'Scenarios',text:'One endpoint at a time: build order, if/else logic flow, rules, the minimal request, and a comparison with your own payload.'},
- {selector:'.workspace-footer button',title:'Ask Atlas',text:'Ask questions about this API. Answers use only the saved analysis and cite their sources.'},
 ];
 
 export default function Tour({onClose}:{onClose:()=>void}){

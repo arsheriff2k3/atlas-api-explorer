@@ -27,11 +27,11 @@ test('projects list, open a project, switch tabs, and deep links restore the vie
   await expect(page.getByRole('heading', {name: /your projects/i})).toBeVisible();
 });
 
-test('settings show the AI connection and the theme can be switched', async ({page}) => {
+test('settings show exploration depth and the theme can be switched', async ({page}) => {
   await page.getByRole('radio', {name: 'Dark'}).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.getByRole('radio', {name: 'Light'}).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.getByRole('button', {name: /Settings/}).click();
-  await expect(page.getByText('AI reasoning')).toBeVisible();
+  await expect(page.getByText('Exploration depth')).toBeVisible();
 });

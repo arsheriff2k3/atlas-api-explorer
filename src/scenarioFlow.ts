@@ -1,16 +1,10 @@
 import type { CreationStep } from './callFlow.ts';
 import type { Scenario } from './scenarios.ts';
 
-// The if/else logic of a scenario as a flowchart: prerequisite checks
-// ("Customer exists? no -> create it"), then the decisions that change the
-// request (AI decisions when available, otherwise the spec's cases), then the call.
-
-export interface AiDecision { question: string; branches: {answer: string; outcome: string; requiredFields: string[]}[] }
-export interface AiCaseLite { name: string; when: string; requiredEntities: string[]; requiredFields: string[]; notes: string[] }
-export interface FlowAi { decisions?: AiDecision[]; cases?: AiCaseLite[] }
+// The if/else logic of a scenario comes from prerequisite checks and specification cases.
 
 export type FlowNodeKind = 'start' | 'check' | 'create' | 'decision' | 'branch' | 'end';
-export interface FlowNode { id: string; kind: FlowNodeKind; title: string; lines: string[]; source: 'spec' | 'ai' | 'plan'; step?: CreationStep }
+export interface FlowNode { id: string; kind: FlowNodeKind; title: string; lines: string[]; source: 'spec' | 'plan'; step?: CreationStep }
 export interface FlowEdge { id: string; source: string; target: string; label?: string; kind?: 'yes' | 'no' | 'branch' }
 export interface LogicFlow { nodes: FlowNode[]; edges: FlowEdge[] }
 
@@ -18,7 +12,7 @@ export interface FlowStep { step: CreationStep; stage: 'existing' | 'build' | 'c
 
 const clip = (text: string, max = 110) => text.length > max ? `${text.slice(0, max - 1)}…` : text;
 
-export function buildLogicFlow(scenario: Scenario, steps: FlowStep[], ai: FlowAi | null): LogicFlow {
+export function buildLogicFlow(scenario: Scenario, steps: FlowStep[]): LogicFlow {
   const nodes: FlowNode[] = [];
   const edges: FlowEdge[] = [];
   const link = (source: string, target: string, label?: string, kind?: FlowEdge['kind']) => edges.push({id: `${source}->${target}:${label || ''}`, source, target, label, kind});
@@ -56,13 +50,8 @@ export function buildLogicFlow(scenario: Scenario, steps: FlowStep[], ai: FlowAi
   const laneEnds = visible.filter(item => item.stage !== 'call' && ends.has(item.step.entity.id) && !visible.some(other => other.stage !== 'call' && other !== item && ends.has(other.step.entity.id) && scenario.plan.trace.links.some(link => link.source === item.step.entity.id && link.target === other.step.entity.id)));
   if (laneEnds.length) open = laneEnds.flatMap(item => ends.get(item.step.entity.id)!);
 
-  const decisions: {question: string; source: 'ai' | 'spec'; branches: {answer: string; lines: string[]}[]}[] = [];
-  if (ai?.decisions?.length) {
-    for (const decision of ai.decisions.slice(0, 5)) decisions.push({question: decision.question, source: 'ai', branches: decision.branches.slice(0, 7).map(branch => ({answer: branch.answer, lines: [clip(branch.outcome, 140), ...(branch.requiredFields.length ? [`Send: ${clip(branch.requiredFields.join(', '), 90)}`] : [])]}))});
-  } else {
-    for (const item of scenario.cases.slice(0, 3)) decisions.push({question: `${item.label}?`, source: 'spec', branches: item.values.slice(0, 7).map(value => ({answer: value.value, lines: value.rules.length ? value.rules.slice(0, 2).map(rule => clip(`${rule.field.split('.').at(-1)}: ${rule.text}`, 120)) : ['No extra rules in the specification']}))});
-    if (ai?.cases?.length) decisions.push({question: 'Which case applies?', source: 'ai', branches: ai.cases.slice(0, 7).map(item => ({answer: item.name, lines: [clip(item.when, 120), ...(item.requiredFields.length ? [`Send: ${clip(item.requiredFields.join(', '), 90)}`] : [])]}))});
-  }
+  const decisions: {question: string; source: 'spec'; branches: {answer: string; lines: string[]}[]}[] = [];
+  for (const item of scenario.cases.slice(0, 3)) decisions.push({question: `${item.label}?`, source: 'spec', branches: item.values.slice(0, 7).map(value => ({answer: value.value, lines: value.rules.length ? value.rules.slice(0, 2).map(rule => clip(`${rule.field.split('.').at(-1)}: ${rule.text}`, 120)) : ['No extra rules in the specification']}))});
   decisions.forEach((decision, index) => {
     const id = `decision:${index}`;
     nodes.push({id, kind: 'decision', title: decision.question, lines: [], source: decision.source});
