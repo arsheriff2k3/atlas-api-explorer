@@ -28,7 +28,6 @@ export function useSavedAnalyses() {
  const {isAuthenticated}=useConvexAuth();
  const convex=useConvex();
  const rows=useQuery(api.analyses.list,isAuthenticated?{}:'skip');
- const generateUploadUrl=useMutation(api.analyses.generateUploadUrl);
  const saveRow=useMutation(api.analyses.save);
  const removeRow=useMutation(api.analyses.remove);
  const cache=useRef(new Map<string,Analysis>());
@@ -38,21 +37,22 @@ export function useSavedAnalyses() {
 
  const save=useCallback(async (analysis:Analysis,replaceId?:string)=>{
   const {jobId,...data}=analysis;void jobId;
-  const uploadUrl=await generateUploadUrl();
   const body=await gzip(JSON.stringify(data));
-  const response=await fetch(uploadUrl,{method:'POST',headers:{'Content-Type':body.type},body});
-  if(!response.ok)throw new Error('The analysis could not be uploaded.');
+  const response=await fetch('/api/upload',{method:'POST',headers:{'Content-Type':body.type},body});
+  if(!response.ok){const error=await response.json().catch(()=>null);throw new Error(error?.error||'The analysis could not be uploaded.');}
   const {storageId}=await response.json() as {storageId:Id<'_storage'>};
   await saveRow({storageId,replaceId:replaceId&&replaceId!==data.id?replaceId:undefined,analysisId:data.id,sourceKey:sourceKeyFor(data.urls),schemaVersion:data.schemaVersion??0,name:data.name,version:data.version,createdAt:data.createdAt,urls:data.urls,mode:data.mode,canonicalVersion:data.coverage?.canonicalVersion??0,entityCount:data.entities.length,operationCount:data.operations.filter(isEndpoint).length,dependencyCount:data.dependencies.length});
   cache.current.set(data.id,analysis);
   if(replaceId)cache.current.delete(replaceId);
- },[generateUploadUrl,saveRow]);
+ },[saveRow]);
 
  const open=useCallback(async (saved:SavedAnalysis)=>{
   const cached=cache.current.get(saved.id);if(cached)return cached;
   const url=await convex.query(api.analyses.fileUrl,{analysisId:saved.id});
   if(!url)throw new Error('This saved analysis is no longer available. Rerun it from its documentation.');
-  const response=await fetch(url);
+  let response:Response;
+  try{response=await fetch(url,{signal:AbortSignal.timeout(30000)})}
+  catch{throw new Error('The saved analysis could not be downloaded. Try again.')}
   if(!response.ok)throw new Error('The saved analysis could not be downloaded. Try again.');
   let analysis=await readMap(response);
   // Maps saved by an older engine are upgraded in place (e.g. new ID links), not re-crawled.

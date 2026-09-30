@@ -22,13 +22,30 @@ function rawGithub(url) {
   const u = new URL(url); if (u.hostname === 'github.com' && u.pathname.includes('/blob/')) return `https://raw.githubusercontent.com${u.pathname.replace('/blob/','/')}`;
   return url;
 }
-async function fetchWithRetry(url,signal) {
+function sleep(ms,signal) {
+  if(ms<=0)return Promise.resolve();
+  return new Promise((resolve,reject)=>{const onAbort=()=>{clearTimeout(timer);reject(signal.reason)};const timer=setTimeout(()=>{signal.removeEventListener('abort',onAbort);resolve()},ms);signal.addEventListener('abort',onAbort,{once:true})});
+}
+// Requests to one documentation host are spaced out; a 429 widens the gap and
+// successes slowly narrow it again, so large ReadMe crawls stay under host limits.
+function createPacer(baseMs) {
+  const hosts=new Map();
+  const state=url=>{const origin=new URL(url).origin;if(!hosts.has(origin))hosts.set(origin,{interval:baseMs,next:0});return hosts.get(origin)};
+  return {
+    async wait(url,signal){const host=state(url);const now=Date.now();const slot=Math.max(now,host.next);host.next=slot+host.interval;await sleep(slot-now,signal)},
+    slowDown(url,retryAfterMs){const host=state(url);host.interval=Math.min(5000,host.interval*2);host.next=Math.max(host.next,Date.now()+retryAfterMs)},
+    speedUp(url){const host=state(url);host.interval=Math.max(baseMs,Math.round(host.interval*0.9))},
+  };
+}
+async function fetchWithRetry(url,signal,{fetch,pacer,retryMs}) {
   for(let attempt=0;;attempt++) {
-    try{return await fetchDocument(url,signal)}
+    await pacer.wait(url,signal);
+    try{const doc=await fetch(url,signal);pacer.speedUp(url);return doc}
     catch(error){
-      if(signal.aborted||!(error.timeout||[429,502,503,504].includes(error.status))||attempt>=3)throw error;
-      const delay=Math.min(30000,Math.max(error.retryAfterMs||0,700*2**attempt));
-      await new Promise((resolve,reject)=>{const onAbort=()=>{clearTimeout(timer);reject(signal.reason)};const timer=setTimeout(()=>{signal.removeEventListener('abort',onAbort);resolve()},delay);signal.addEventListener('abort',onAbort,{once:true})});
+      const rateLimited=error.status===429;
+      if(rateLimited)pacer.slowDown(url,error.retryAfterMs||0);else pacer.speedUp(url);
+      if(signal.aborted||!(error.timeout||[429,502,503,504].includes(error.status))||attempt>=(rateLimited?5:3))throw error;
+      await sleep(Math.min(30000,Math.max(error.retryAfterMs||0,retryMs*2**attempt)),signal);
     }
   }
 }
@@ -41,6 +58,10 @@ function serverUrl(server){
 }
 export async function runAnalysis(urls, options, progress, signal) {
   let maxPages = options.maxPages || 24;
+  const fetchOptions={fetch:options.fetch||fetchDocument,pacer:createPacer(options.paceMs??250),retryMs:options.retryMs??1500};
+  // Crawling stops early enough for mapping and saving to finish inside the job's runtime limit.
+  const crawlDeadline=Date.now()+(options.crawlBudgetMs??420000);
+  const rateLimited=new Set();
   const queue = [...urls]; const seen = new Set(); const discovered = new Set(urls); const pages = []; const specs = []; const warnings = [];
   const roots = urls.map(u=>new URL(u));
   const allowed = u => roots.some(root=>new URL(u).origin === root.origin);
@@ -48,11 +69,12 @@ export async function runAnalysis(urls, options, progress, signal) {
   const referenceManifest=new Set();const fetchedDocuments=new Set();const parsedDocuments=new Set();const unparsedDefinitions=new Set();
   let probesAdded = false;
   progress('discover',6,'Discovering documentation and API specifications');
-  while (queue.length && seen.size < maxPages) {
+  while (queue.length && seen.size < maxPages && Date.now() < crawlDeadline) {
     signal.throwIfAborted();
     const candidates = queue.splice(0,Math.min(readmeOrigins.size?1:3,maxPages-seen.size)).filter(u=>!seen.has(u));
     candidates.forEach(u=>seen.add(u));
-    const fetched = await Promise.all(candidates.map(async url=>{try{return {requested:url,doc:await fetchWithRetry(url,signal)}}catch(e){if(signal.aborted)throw e;if(e.status===429)throw new Error(`The documentation host rate-limited this crawl at ${url}. Wait and rerun; the previous saved map is preserved.`);if(!isDiscoveryProbe(url)||!/HTTP 404/.test(e.message))warnings.push(`${url}: ${e.message}`);return null;}}));
+    // A page that stays rate limited is left unread; the coverage check below decides whether the run is still usable.
+    const fetched = await Promise.all(candidates.map(async url=>{try{return {requested:url,doc:await fetchWithRetry(url,signal,fetchOptions)}}catch(e){if(signal.aborted)throw e;if(e.status===429){rateLimited.add(url);return null}if(!isDiscoveryProbe(url)||!/HTTP 404/.test(e.message))warnings.push(`${url}: ${e.message}`);return null;}}));
     for (const item of fetched.filter(Boolean)) {
       const {doc,requested}=item;
       fetchedDocuments.add(requested);fetchedDocuments.add(doc.url);
@@ -138,8 +160,9 @@ export async function runAnalysis(urls, options, progress, signal) {
   const fullSpecOperations=Math.max(0,...specs.filter(item=>!item.embedded).map(item=>Object.values(item.spec.paths||{}).reduce((sum,path)=>sum+Object.keys(path).filter(key=>/^(get|post|put|patch|delete|head|options)$/i.test(key)).length,0)));
   const fullSpecCoversIndex=referenceManifest.size>0&&fullSpecOperations>=referenceManifest.size*.7;
   if(referenceManifest.size>=10 && !fullSpecCoversIndex && unreadReferences.length>Math.max(3,Math.floor(referenceManifest.size*.2))){
-    throw new Error(`Only ${referenceManifest.size-unreadReferences.length} of ${referenceManifest.size} indexed reference pages could be read. The documentation host may be rate limiting this crawl. Wait and rerun; the previous saved map is preserved.`);
+    throw new Error(`Only ${referenceManifest.size-unreadReferences.length} of ${referenceManifest.size} indexed reference pages could be read${rateLimited.size?` (${rateLimited.size} rate limited by the documentation host)`:'. The documentation host may be rate limiting this crawl'}. Wait and rerun; the previous saved map is preserved.`);
   }
+  if(rateLimited.size)warnings.push(`${rateLimited.size} page${rateLimited.size===1?' was':'s were'} rate limited by the documentation host and not read: ${[...rateLimited].slice(0,5).join(', ')}`);
   const merged={id:createHash('sha256').update(urls.join() + Date.now()).digest('hex').slice(0,12),name:results[0]?.name || pages[0]?.title?.split('|')[0]?.trim() || new URL(urls[0]).hostname,version:results[0]?.version || 'Documentation',createdAt:new Date().toISOString(),urls,entities:results.flatMap(r=>r.entities),operations:results.flatMap(r=>r.operations),dependencies:results.flatMap(r=>r.dependencies),patterns:results.flatMap(r=>r.patterns),warnings:[...warnings,...results.flatMap(r=>r.warnings)],sources:[...specs.map(s=>({url:s.url,title:`${s.spec['x-atlas-format']||'API'} · ${s.title||s.spec.info?.title||'specification'}`,kind:'spec',status:'analyzed'})),...pages.map(p=>({url:p.url,title:p.title,kind:'page',status:'read'})),...unreadReferences.map(url=>({url,title:'Indexed reference page',kind:'page',status:'not fetched'}))],coverage:{pagesRead:pages.length,specifications:specs.length,discovered:discovered.size,attempted:seen.size,pageLimit:maxPages,complete:false,referencePagesIndexed:referenceManifest.size,referencePagesRead:[...referenceManifest].filter(url=>fetchedDocuments.has(url)).length,referencePagesParsed:[...referenceManifest].filter(url=>parsedDocuments.has(url)).length,referencePagesUnparsed:unparsedReferences.length,referencePagesUnread:unreadReferences.length},mode:'structural',demo:false,servers:[...new Set(specs.flatMap(item=>[...(item.spec.servers||[]).map(serverUrl),item.spec.host?`${(item.spec.schemes||['https'])[0]}://${item.spec.host}${item.spec.basePath||''}`:null]).filter(url=>typeof url==='string'&&/^https?:\/\//.test(url)))].slice(0,8),docsUrl:specs.map(item=>item.spec.externalDocs?.url).find(url=>/^https?:\/\//.test(url||''))||pages[0]?.url||null};
   if(unparsedReferences.length)merged.warnings.push(`${unparsedReferences.length} indexed reference page${unparsedReferences.length===1?' has':'s have'} an OpenAPI definition that could not be parsed: ${unparsedReferences.slice(0,5).join(', ')}`);
   if(unreadReferences.length)merged.warnings.push(`${unreadReferences.length} indexed reference page${unreadReferences.length===1?' was':'s were'} not fetched within this run: ${unreadReferences.slice(0,5).join(', ')}`);
@@ -151,6 +174,7 @@ export async function runAnalysis(urls, options, progress, signal) {
     for(const source of merged.entities.filter(e=>e.api!==target.api && normalize(e.rawName||e.name)===key)) merged.dependencies.push({id:`cross:${source.id}:${target.id}:${field.name}`,source:source.id,target:target.id,field:field.name,type:'cross-api',status:'inferred',evidence:`The field ${field.name} matches ${source.name} in ${source.api}. This is a cross-API candidate based on naming only, not a confirmed integration.`,sourceUrl:target.source});
   }
   if (!merged.entities.length && !merged.operations.length) {
+    if(rateLimited.size)throw new Error(`The documentation host rate-limited this crawl at ${[...rateLimited][0]}. Wait and rerun; the previous saved map is preserved.`);
     throw new Error('No supported API specification found. Try a direct OpenAPI, Postman, GraphQL, AsyncAPI, RAML, API Blueprint, OpenRPC, .proto, WSDL, or Smithy JSON AST URL.');
   }
   merged.warnings.push(`Coverage is bounded to ${maxPages} fetches per run. Discovered ${discovered.size} links; unread pages, external references, and undocumented behavior may contain additional dependencies.`);

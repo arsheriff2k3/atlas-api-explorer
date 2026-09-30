@@ -4,5 +4,5 @@ import nextTs from 'eslint-config-next/typescript';
 export default defineConfig([
  ...nextVitals,...nextTs,
  {rules:{'react-hooks/set-state-in-effect':'off','react-hooks/refs':'off'}},
- globalIgnores(['.next/**','convex/_generated/**','out/**','next-env.d.ts','test-results/**','playwright-report/**']),
+ globalIgnores(['.next/**','.cloudflare/**','.vinext/**','convex/_generated/**','out/**','next-env.d.ts','test-results/**','playwright-report/**']),
 ]);

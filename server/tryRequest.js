@@ -2,6 +2,7 @@ import http from 'node:http';
 import https from 'node:https';
 import zlib from 'node:zlib';
 import { validateUrl } from './network.js';
+export { formEncode } from './formEncode.js';
 
 // "Try it": sends one real request to a public API on the user's behalf.
 // The same SSRF rules as documentation fetching apply (public addresses only, DNS
@@ -11,11 +12,13 @@ const METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIO
 const BLOCKED_HEADERS = /^(?:host|content-length|connection|transfer-encoding|cookie|upgrade|proxy-.*|te|trailer|keep-alive)$/i;
 const MAX_RESPONSE = 256 * 1024;
 
+/** @param {{url:string,method:string,headers?:Record<string,string>,body?:string|null}} requestOptions @param {AbortSignal} signal */
 export async function tryRequest({ url, method, headers = {}, body = null }, signal) {
   const verb = String(method || '').toUpperCase();
   if (!METHODS.has(verb)) throw new Error('Unsupported HTTP method.');
   if (typeof url !== 'string' || url.length > 4096 || /\{[^}]+\}/.test(url)) throw new Error('Fill in every {placeholder} in the URL first.');
   const { url: target, address, addresses } = await validateUrl(url);
+  if(target.protocol!=='https:')throw new Error('Try It requires HTTPS to protect API credentials.');
   const outgoing = { 'User-Agent': 'APIPassage/1.0 (try it)', Accept: 'application/json, */*', 'Accept-Encoding': 'gzip, br, deflate' };
   for (const [name, value] of Object.entries(headers || {})) {
     if (typeof value !== 'string' || !/^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/.test(name) || BLOCKED_HEADERS.test(name) || /[\r\n]/.test(value)) continue;
@@ -47,23 +50,4 @@ export async function tryRequest({ url, method, headers = {}, body = null }, sig
     if (payload) request.write(payload);
     request.end();
   });
-}
-
-/** Encodes an object as application/x-www-form-urlencoded with bracket keys (a[b]=1, a[b][0]=1). */
-export function formEncode(value, arrayStyle = 'suffix') {
-  const pairs = [];
-  const walk = (node, key) => {
-    if (node === undefined) return;
-    if (Array.isArray(node)) {
-      node.forEach((item, index) => {
-        if (item && typeof item === 'object' && !Array.isArray(item) && arrayStyle === 'suffix') for (const [child, childValue] of Object.entries(item)) walk(childValue, `${key}[${child}][${index}]`);
-        else walk(item, `${key}[${index}]`);
-      });
-      return;
-    }
-    if (node && typeof node === 'object') { for (const [child, childValue] of Object.entries(node)) walk(childValue, key ? `${key}[${child}]` : child); return; }
-    pairs.push(`${encodeURIComponent(key)}=${encodeURIComponent(node === null ? '' : String(node))}`);
-  };
-  walk(value, '');
-  return pairs.join('&');
 }

@@ -26,6 +26,8 @@ export const create=mutation({
   const identity=await ctx.auth.getUserIdentity();
   if(!identity)throw new ConvexError('Sign in to save flows.');
   if(name.length>120||operationIds.length>40)throw new ConvexError('Flows are limited to 40 steps.');
+  const existing=await ctx.db.query('flows').withIndex('by_userId_and_sourceKey',q=>q.eq('userId',identity.tokenIdentifier).eq('sourceKey',sourceKey)).take(101);
+  if(existing.length>=100)throw new ConvexError('This project has reached its 100-flow limit.');
   return await ctx.db.insert('flows',{userId:identity.tokenIdentifier,sourceKey,name,operationIds,updatedAt:Date.now()});
  },
 });

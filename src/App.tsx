@@ -81,11 +81,12 @@ export default function App(){
   onStart:()=>{setError('');setModal(null)},
   onError:message=>setError(message),
   onToast:message=>setToast(message),
-  onComplete:async (fresh,replaced)=>{
+  onComplete:async (fresh,replaced,previousResultUrl)=>{
    // On a rerun, record what changed since the previous map before it is replaced.
    let result=fresh;const previousSaved=replaced?history.find(item=>item.id===replaced):null;
-   if(previousSaved){try{const previous=await openSavedAnalysis(previousSaved);result={...fresh,changes:diffAnalyses(previous,fresh)}}catch{}}
-   loadAnalysis(result);if(result.changes)setShowChanges(true);setToast(replaced?'Analysis refreshed and saved to your account.':'Your API map is ready and saved to your account.');setSaveFailure(null);void saveAnalysis(result,replaced||undefined).catch(()=>setSaveFailure({analysis:result,replaceId:replaced||undefined}))},
+   if(previousResultUrl){try{const response=await fetch(previousResultUrl);if(response.ok)result={...fresh,changes:diffAnalyses(await readMap(response),fresh)}}catch{}}
+   else if(previousSaved){try{const previous=await openSavedAnalysis(previousSaved);result={...fresh,changes:diffAnalyses(previous,fresh)}}catch{}}
+   loadAnalysis(result);if(result.changes)setShowChanges(true);setToast(replaced?'Analysis refreshed and saved to your account.':'Your API map is ready and saved to your account.');setSaveFailure(null)},
  });
  const running=jobRunning;
  const startTemplate=useCallback((template:ProjectTemplate)=>{
@@ -108,21 +109,23 @@ export default function App(){
   setSharedBy(null);
   const saved=routeAnalysis?history.find(item=>item.id===routeAnalysis):null;
   if(saved){if(saved.id!==analysis.id)void openSaved(saved,routeTab);else if(routeTab)setView(routeTab);return}
-  if(routeAnalysis){setError('That saved project was not found in your account.');setView('workspace');return}
+  if(routeAnalysis){setError('That saved project was not found in your account.');setView('workspace');router.replace('/');return}
   const template=templateFor(routeProject);
   if(template){startTemplate(template);return}
   setView('workspace');
- },[historyReady,routeKey,routeAnalysis,routeProject,routeShare,routeTab,history,analysis.id,openSaved,startTemplate,convexClient,loadAnalysis]);
+ },[historyReady,routeKey,routeAnalysis,routeProject,routeShare,routeTab,history,analysis.id,openSaved,startTemplate,convexClient,loadAnalysis,router]);
  // Keep the URL in step with the open project and tab so reload, back, and shared links restore it.
  useEffect(()=>{
+  if(!historyReady)return;
   const saved=!analysis.demo&&history.some(item=>item.id===analysis.id);
+  if(routeAnalysis&&analysis.id!==routeAnalysis&&view==='workspace')return;
   const next=view==='workspace'||!saved?'/':`/?analysis=${encodeURIComponent(analysis.id)}${view==='graph'?'':`&tab=${view}`}`;
   const current=`${window.location.pathname}${window.location.search}`;
   if(routeShare&&view!=='workspace')return;
   if(next===current||(next==='/'&&(routeProject||(routeAnalysis&&view!=='workspace'))))return;
   handledRoute.current=next==='/'?'|':`${analysis.id}|`;
   router.replace(next,{scroll:false});
- },[view,analysis.id,analysis.demo,history,router,routeProject,routeAnalysis,routeShare]);
+ },[historyReady,view,analysis.id,analysis.demo,history,router,routeProject,routeAnalysis,routeShare]);
  function showProjects(){setView('workspace');setFullGraph(false);setTraceTarget(null);setShowSidebar(false);}
  function openFromNav(saved:SavedAnalysis){return (event:{preventDefault:()=>void})=>{event.preventDefault();setShowSidebar(false);setFullGraph(false);if(saved.id===analysis.id&&view!=='workspace')return;void openSaved(saved)}}
  function startAnalysis(){

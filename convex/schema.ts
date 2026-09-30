@@ -12,6 +12,23 @@ import { v } from 'convex/values';
 // - shares: read-only links to a project (owner-scoped; recipients must be signed in).
 // Every row is owned by `userId` = Clerk tokenIdentifier and only read through it.
 export default defineSchema({
+ analysisJobs: defineTable({
+  jobId:v.string(),userId:v.string(),urls:v.array(v.string()),maxPages:v.number(),
+  status:v.union(v.literal('queued'),v.literal('running'),v.literal('complete'),v.literal('failed'),v.literal('cancelled')),
+  progress:v.number(),stage:v.string(),message:v.string(),error:v.optional(v.string()),
+  events:v.array(v.object({stage:v.string(),progress:v.number(),message:v.string(),time:v.number()})),
+  createdAt:v.number(),updatedAt:v.number(),attempts:v.number(),
+  leaseToken:v.optional(v.string()),leaseUntil:v.optional(v.number()),
+  resultStorageId:v.optional(v.id('_storage')),
+  previousStorageId:v.optional(v.id('_storage')),
+ })
+  .index('by_jobId',['jobId'])
+  .index('by_userId_and_createdAt',['userId','createdAt'])
+  .index('by_userId_and_status',['userId','status'])
+  .index('by_status_and_createdAt',['status','createdAt'])
+  .index('by_status_and_leaseUntil',['status','leaseUntil']),
+ usage: defineTable({userId:v.string(),day:v.string(),analyses:v.number(),tryRequests:v.number(),tryUntil:v.number(),lastTryAt:v.number(),normalizations:v.optional(v.number()),uploads:v.optional(v.number())})
+  .index('by_userId_and_day',['userId','day']),
  analyses: defineTable({
   userId: v.string(),
   analysisId: v.string(),

@@ -3,6 +3,7 @@ dist
 .env
 .env.*
 !.env.example
+.dev.vars*
 test-results
 playwright-report
 .DS_Store
@@ -11,4 +12,11 @@ out
 *.tsbuildinfo
 next-env.d.ts
 .convex/
-convex/_generated/
+convex/_generated/*
+!convex/_generated/api.d.ts
+!convex/_generated/api.js
+!convex/_generated/dataModel.d.ts
+!convex/_generated/server.d.ts
+!convex/_generated/server.js
+.vinext/
+.cloudflare/

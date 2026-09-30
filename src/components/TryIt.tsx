@@ -28,6 +28,7 @@ export default function TryIt({scenario,servers,sourceKey}:{scenario:Scenario;se
  async function send(){
   setBusy(true);setError('');setResult(null);
   try{
+   if(new URL(url).protocol!=='https:')throw new Error('Try It requires an HTTPS base URL.');
    let parsed:unknown=null;
    if(hasBody&&body.trim()){try{parsed=JSON.parse(body)}catch{throw new Error('The request body must be valid JSON (it is converted to form fields when the endpoint expects them).')}}
    const headers:Record<string,string>={};
@@ -43,7 +44,7 @@ export default function TryIt({scenario,servers,sourceKey}:{scenario:Scenario;se
  }
  const pretty=result?(()=>{try{return JSON.stringify(JSON.parse(result.body),null,2)}catch{return result.body}})():'';
  return <div className="try-it">
-  <p className="try-warning"><AlertTriangle size={13}/>Sends a real {operation.method} request{host?<> to <b>{host}</b></>:''}. Use a test or sandbox account; write requests change real data. Credentials are not saved.</p>
+  <p className="try-warning"><AlertTriangle size={13}/>Sends a real {operation.method} request{host?<> to <b>{host}</b></>:''} over HTTPS. Use a test or sandbox account; write requests change real data. Credentials are not saved.</p>
   <div className="try-grid">
    <label className="form-label">BASE URL{servers.length>1?<select value={servers.includes(baseUrl)?baseUrl:''} onChange={event=>event.target.value&&setBaseUrl(event.target.value)}><option value="">Custom…</option>{servers.map(server=><option key={server}>{server}</option>)}</select>:null}<input value={baseUrl} onChange={event=>setBaseUrl(event.target.value)} placeholder="https://api.example.com/v1" spellCheck={false}/></label>
    <label className="form-label">AUTHENTICATION<select value={auth} onChange={event=>setAuth(event.target.value as Auth)}><option value="bearer">Bearer token</option><option value="basic">Basic (username / API key)</option><option value="header">API key header</option><option value="none">None</option></select></label>

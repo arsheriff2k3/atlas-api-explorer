@@ -26,6 +26,8 @@ export const create=mutation({
   const user=await identity(ctx);
   const project=await ctx.db.query('analyses').withIndex('by_userId_and_sourceKey',q=>q.eq('userId',user.tokenIdentifier).eq('sourceKey',sourceKey)).first();
   if(!project)throw new ConvexError('Save this project before sharing it.');
+  const links=await ctx.db.query('shares').withIndex('by_ownerId_and_sourceKey',q=>q.eq('ownerId',user.tokenIdentifier).eq('sourceKey',sourceKey)).take(21);
+  if(links.filter(link=>!link.revoked).length>=20)throw new ConvexError('This project has reached its 20 active share-link limit.');
   const token=newToken();
   await ctx.db.insert('shares',{ownerId:user.tokenIdentifier,ownerName:user.name||user.email||'An APIPassage user',sourceKey,name:project.name,token,revoked:false,createdAt:Date.now()});
   return token;

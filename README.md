@@ -29,7 +29,7 @@ The former Atlas browser preferences are copied to APIPassage keys when opened. 
    NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
    ```
 
-Then start APIPassage, keeping `npx convex dev` running in another terminal:
+Set `NEXT_PUBLIC_CONVEX_SITE_URL` in `.env.local` to your deployment's Convex site URL. Then start APIPassage, keeping `npx convex dev` running in another terminal:
 
 ```bash
 npm install
@@ -59,14 +59,16 @@ Try the Chargebee documentation landing page at <https://apidocs.chargebee.com/d
 
 ```bash
 npm test            # unit tests
+npm run test:jobs    # durable job lifecycle and account isolation tests
 npm run test:e2e    # browser tests (Playwright); signed-in tests need E2E_CLERK_USER_EMAIL
 npm run typecheck
+npm run typecheck:convex
 npm run lint
 npm run build
 npm start
 ```
 
-The app uses the Next.js App Router. Every completed analysis is saved to the signed-in user's Convex account: the full JSON in Convex file storage and a summary row in the `analyses` table. JSON and Markdown exports are available from the workspace. Job progress and completed results live in the current Node process, so a server restart ends active jobs. The local version is intended for a single user and process.
+The app uses the Next.js App Router. Analysis jobs and progress live in Convex, and a scheduled Convex Node action runs each analysis. The action saves completed results to Convex file storage before reporting success. Jobs survive browser and web-server restarts; a stalled action is retried after its lease expires. JSON and Markdown exports are available from the workspace. See the [staging testing guide](docs/testing.md) for manual and automated checks, [staging operations](docs/staging.md) for the configured deployment, and [production deployment](docs/production.md) for limits, monitoring, and launch checks.
 
 ## Scenarios
 
