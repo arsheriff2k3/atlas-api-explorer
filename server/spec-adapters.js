@@ -86,6 +86,21 @@ function blueprint(text) {
   return spec;
 }
 
+// A Relay connection (`edges { node }` / `nodes`) or a mutation payload wrapping one
+// object (`{ project }`) is plumbing: file the operation under the object it returns.
+function resourceType(type, depth = 0) {
+  if (!isObjectType(type) || depth > 2) return type;
+  const fields = type.getFields();
+  const named = name => fields[name] && getNamedType(fields[name].type);
+  const node = named('edges') && isObjectType(named('edges')) ? named('edges').getFields().node : null;
+  if (node && isObjectType(getNamedType(node.type))) return resourceType(getNamedType(node.type), depth + 1);
+  if (isObjectType(named('nodes'))) return resourceType(named('nodes'), depth + 1);
+  if (/Payload$/.test(type.name)) {
+    const objects = Object.values(fields).filter(field => !/^(?:errors|userErrors|clientMutationId)$/.test(field.name) && isObjectType(getNamedType(field.type)));
+    if (objects.length === 1) return resourceType(getNamedType(objects[0].type), depth + 1);
+  }
+  return type;
+}
 function graphQL(doc) {
   const schema=typeof doc==='string'?buildSchema(doc):buildClientSchema(doc.data||doc);
   const spec=base('GraphQL API','GraphQL','schema');
@@ -97,7 +112,7 @@ function graphQL(doc) {
     const fields=type.getFields();spec.components.schemas[name]={type:'object',description:type.description||'',properties:Object.fromEntries(Object.entries(fields).map(([field,value])=>[field,{...typeSchema(value.type),description:value.description||''}])),required:Object.entries(fields).filter(([,v])=>String(v.type).endsWith('!')).map(([field])=>field)};
   }
   for(const [method,root] of [['query',schema.getQueryType()],['mutation',schema.getMutationType()],['subscription',schema.getSubscriptionType()]])if(root)for(const [name,field] of Object.entries(root.getFields())){
-    const result=getNamedType(field.type);const resource=isObjectType(result)?result.name:root.name;
+    const result=resourceType(getNamedType(field.type));const resource=isObjectType(result)?result.name:root.name;
     const path=`/${resource}/${name}`;add(spec,path,method,{summary:name,description:field.description||'',parameters:field.args.map(arg=>({name:arg.name,in:'argument',required:String(arg.type).endsWith('!'),schema:typeSchema(arg.type),description:arg.description||''})),responses:{'200':{description:'GraphQL result',content:{'application/json':{schema:typeSchema(field.type)}}}},tags:[root.name]});
   }
   return spec;

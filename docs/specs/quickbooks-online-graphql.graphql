@@ -831,7 +831,7 @@ SampleApp-SalesTax-DotNet Models (transactionDate, taxTotals, subject, shipping,
 id is always "0" for stateless calculations (per the prompt). transactionDate declared DateTime because samples show "2025-06-17T00:00:00".
 Name not published; inferred from the payload field.
 """
-type IndirectTax_TaxCalculationPayload_taxCalculation {
+type IndirectTax_TaxCalculation {
   id: ID
   transactionDate: DateTime
   subject: IndirectTax_TaxCalculationSubject
@@ -847,7 +847,7 @@ Prompt-Library sales-tax-ready-prompt.md selects via "... on IndirectTax_TaxCalc
 Return type may be abstract in Intuit's schema; declared as the concrete payload type because no other member was seen.
 """
 type IndirectTax_TaxCalculationPayload {
-  taxCalculation: IndirectTax_TaxCalculationPayload_taxCalculation
+  taxCalculation: IndirectTax_TaxCalculation
 }
 
 # ---------------------------------------------------------------------------

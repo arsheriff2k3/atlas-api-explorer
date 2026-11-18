@@ -62,3 +62,18 @@ test('OpenAPI webhooks are tagged as events and wide request bodies keep every t
   assert.equal(create.inputs.find(input=>input.name==='x-origin-ip').location,'header');
   assert.equal(result.operations.find(operation=>operation.path==='/webhooks/invoice_generated').kind,'webhook');
 });
+
+test('GraphQL connections and single-object payloads are filed under the object they return',()=>{
+  const sdl=`type Query { projects(first: Int): ProjectConnection tags: TagList }
+type Mutation { createProject(name: String!): CreateProjectPayload }
+type ProjectConnection { edges: [ProjectEdge] pageInfo: PageInfo }
+type ProjectEdge { node: Project cursor: String }
+type TagList { nodes: [Tag] }
+type CreateProjectPayload { project: Project userErrors: [UserError] }
+type PageInfo { hasNextPage: Boolean }
+type UserError { message: String }
+type Project { id: ID! name: String }
+type Tag { id: ID! }`;
+  const {spec}=parseApiSpecification(sdl,'https://example.com/schema.graphql');
+  assert.deepEqual(Object.keys(spec.paths).sort(),['/Project/createProject','/Project/projects','/Tag/tags']);
+});
