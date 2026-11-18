@@ -4,7 +4,8 @@ import { normalize, pathPart, referenceTarget } from './parser.js';
 const singular = word => word.endsWith('ies') ? `${word.slice(0,-3)}y` : word.endsWith('sses') ? word.slice(0,-2) : word.endsWith('s') && !word.endsWith('ss') ? word.slice(0,-1) : word;
 const humanize = value => value.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[-_]/g,' ').split(/\s+/).filter(Boolean).map((part,index)=>index?part.toLowerCase():part[0].toUpperCase()+part.slice(1).toLowerCase()).join(' ');
 const host = url => { try { return new URL(url).hostname; } catch { return ''; } };
-const resourceId = (origin,key) => `resource:${createHash('sha256').update(`${origin}|${key}`).digest('hex').slice(0,12)}`;
+// Case-insensitive, so REST `/timeactivity` and GraphQL `TimeActivity` on one host are one resource.
+const resourceId = (origin,key) => `resource:${createHash('sha256').update(`${origin}|${String(key).toLowerCase()}`).digest('hex').slice(0,12)}`;
 const sourcePriority = operation => operation.method === 'GET' && /\{[^}]+\}$/.test(operation.path) ? 4 : operation.method === 'GET' ? 3 : operation.method === 'POST' ? 2 : 1;
 const genericSchemaDescription = description => !description || /^The .+ schema defined by /i.test(description);
 const endpointSentence = sentence => /^(?:Creates?|Retrieves?|Gets?|Lists?|Updates?|Deletes?|Removes?|Archives?|Searches?|Fetches?)\b/i.test(sentence.trim());
@@ -137,7 +138,7 @@ export function canonicalizeAnalysis(analysis) {
     const route = routeOf(operation);
     if (!route) continue;
     const origin = host(operation.source);
-    const key = `${origin}|${route.key}`;
+    const key = `${origin}|${route.key.toLowerCase()}`;
     let resource = resources.get(key);
     if (!resource) {
       resource = {id:resourceId(origin,route.key),name:route.name,rawName:route.name,api:origin,group:humanize(route.root),description:'',fields:[],source:operation.source,sourcePriority:sourcePriority(operation),operationIds:[],kind:'resource',schemaNames:[],root:route.root,tagVotes:new Map()};

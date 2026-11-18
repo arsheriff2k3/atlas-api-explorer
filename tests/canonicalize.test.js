@@ -128,3 +128,11 @@ test('reference-object fields link to the named resource, including qualified na
   const name=id=>analysis.entities.find(item=>item.id===id).name;
   assert.deepEqual(analysis.dependencies.map(link=>`${name(link.source)}>${name(link.target)}:${link.field}`).sort(),['Account>Invoice:DepositToAccountRef','Customer>Invoice:CustomerRef']);
 });
+
+test('a REST path root and a GraphQL type that differ only in case are one resource',()=>{
+  const analysis={entities:[entity('time','TimeActivity',['rest-get','gql-create'])],
+    operations:[operation('rest-get','/timeactivity/{id}','Read',['time']),{...operation('gql-create','/TimeActivity/createTimeActivity','createTimeActivity',['time']),method:'MUTATION'}],dependencies:[],coverage:{},warnings:[]};
+  canonicalizeAnalysis(analysis);
+  assert.deepEqual(analysis.entities.map(item=>item.name),['Time activity']);
+  assert.equal(analysis.entities[0].operationIds.length,2);
+});
