@@ -652,6 +652,7 @@
 :root[data-theme="dark"] .entity-stepper-drawer{background:#171717;border:1px solid #272331;box-shadow:0 18px 45px #b6b1c82b}
 :root[data-theme="dark"] .stepper-drawer-title{color:#a9aab7}
 :root[data-theme="dark"] .stepper-drawer-title span{color:#a4a3ad}
+:root[data-theme="dark"] .api-style-switch>span{color:#a2a5ae}
 :root[data-theme="dark"]{color-scheme:dark}:root[data-theme="dark"] body{background:#14131c;color:#e7e5f0}
 :root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] textarea{background:#1d1b28;color:#e7e5f0;border-color:#34304a}
 :root[data-theme="dark"] .react-flow__controls-button{background:#1d1b28;fill:#d8d4e8;border-color:#34304a}:root[data-theme="dark"] .react-flow__minimap{background:#1d1b28!important}
