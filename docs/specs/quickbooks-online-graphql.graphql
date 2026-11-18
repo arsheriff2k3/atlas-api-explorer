@@ -1,0 +1,1057 @@
+# QuickBooks Online GraphQL API (https://qb.api.intuit.com/graphql) - reconstructed SDL
+#
+# STATUS: reconstructed, UNOFFICIAL, PARTIAL.
+# - Intuit does not publish this schema as SDL. Nothing here was introspected.
+# - Derived on 2026-11-18 only from Intuit's own published code and docs:
+#     * intuit/intuit-cli-for-quickbooks (src/commands/custom-fields.*, dimensions.*, projects.*)
+#     * IntuitDeveloper sample apps: SampleApp-CustomFields-{Java,Python,DotNet},
+#       Sampleapp-Customfields-Nodejs, SampleApp-Project-NodeJS, SampleApp-SalesTax-{Java,DotNet,NodeJS},
+#       SampleApp-EmployeeCompensation-DotNet, Prompt-Library (discover/prompt-config.json and generated prompts)
+# - Every field, argument, input type and enum value is backed by a source file; where a name, type,
+#   nullability or cardinality was not published it is marked in the description ("inferred" / "not published").
+# - Payroll endpoint note: the PayrollSamples repo uses https://v4thirdparty.api.intuit.com/graphql, not this host.
+#   Only the payroll root fields that the EmployeeCompensation sample sends to qb.api.intuit.com are included here.
+# - Regenerate this file via introspection once an OAuth token is available (not done here).
+#
+# Scalars Date, DateTime, Decimal and PositiveInt are named in Intuit's code/docs.
+# Money is named "(Money)" in Prompt-Library; its object/input shape comes from the sample apps.
+
+scalar Date
+scalar DateTime
+scalar Decimal
+scalar PositiveInt
+
+"""
+Pagination info for Relay-style connections.
+Source: IntuitDeveloper/Prompt-Library discover/prompt-config.json (projects_discovery_query, custom_field_definitions_query);
+intuit/intuit-cli-for-quickbooks src/commands/projects.list.ts. Type name not published by Intuit.
+"""
+type PageInfo {
+  hasNextPage: Boolean
+  hasPreviousPage: Boolean
+  startCursor: String
+  endCursor: String
+}
+
+"""
+Money amount with a currency code.
+Source: IntuitDeveloper/SampleApp-SalesTax-NodeJS graphql/salesTax/indirectTax.js (value, currency selections);
+SampleApp-SalesTax-DotNet Models/SalesTaxModels.cs (ValueContainer.value is decimal).
+Type name taken from the "(Money)" annotation in IntuitDeveloper/Prompt-Library discover/generated-prompts/sales-tax-ready-prompt.md.
+Currency type is inferred from examples (String).
+"""
+type Money {
+  value: Decimal
+  currency: String
+}
+
+"""
+Money input.
+Source: IntuitDeveloper/SampleApp-SalesTax-NodeJS graphql/salesTax/indirectTax.js (indirectTaxVariables builds {value, currency}).
+Input type name not published; inferred.
+"""
+input MoneyInput {
+  value: Decimal
+  currency: String
+}
+
+# ---------------------------------------------------------------------------
+# Projects (project-management.project scope)
+# ---------------------------------------------------------------------------
+
+"""
+Project status.
+Values OPEN, IN_PROGRESS, COMPLETE: intuit/intuit-cli-for-quickbooks src/commands/projects.create.ts and projects.update.ts (validation lists).
+OTHER appears only in the Prompt-Library project_creation_query example (prompt-config.json) and is rejected by the CLI; treat as unverified.
+Enum name ProjectManagement_Status is taken from the CLI and sample operation variable declarations.
+"""
+enum ProjectManagement_Status {
+  OPEN
+  IN_PROGRESS
+  COMPLETE
+  OTHER
+}
+
+"""
+Sort order for projectManagementProjects.
+Source: intuit/intuit-cli-for-quickbooks src/commands/projects.list.ts (DUE_DATE_DESC);
+IntuitDeveloper/Prompt-Library discover/prompt-config.json (DUE_DATE_ASC). Other values not evidenced.
+"""
+enum ProjectManagement_OrderBy {
+  DUE_DATE_ASC
+  DUE_DATE_DESC
+}
+
+"""
+A QuickBooks project.
+Source: intuit/intuit-cli-for-quickbooks src/commands/projects.get.ts, projects.list.ts, projects.create.ts;
+IntuitDeveloper/SampleApp-Project-NodeJS graphql/project/getProjectsByFilter.js (type, assignee, addresses, pageInfo fields),
+graphql/project/createProject.js (emailAddress, pinned, completionRate),
+graphql/project/deleteProject.js (deleted). Type name ProjectManagement_Project is the one Intuit uses in fragments.
+"""
+type ProjectManagement_Project {
+  id: ID
+  name: String
+  description: String
+  "Project type. Type inferred from examples (String)."
+  type: String
+  status: ProjectManagement_Status
+  startDate: DateTime
+  dueDate: DateTime
+  completedDate: DateTime
+  priority: Int
+  pinned: Boolean
+  completionRate: Decimal
+  "Set to true for a deleted project (selected by the delete mutation; also usable as a filter)."
+  deleted: Boolean
+  customer: ProjectManagement_Project_customer
+  account: ProjectManagement_Project_account
+  assignee: ProjectManagement_Project_assignee
+  "Project addresses. Declared as a list; cardinality is not evidenced in the sources."
+  addresses: [ProjectManagement_Project_addresses]
+  "Project email addresses. Declared as a list (create mutation accepts a list input)."
+  emailAddress: [Qb_EmailAddress]
+}
+
+"""
+Name not published by Intuit; inferred from selection sets (customer { id }).
+"""
+type ProjectManagement_Project_customer {
+  id: ID
+}
+
+"""
+Name not published by Intuit; inferred from selection sets (account { id }).
+"""
+type ProjectManagement_Project_account {
+  id: ID
+}
+
+"""
+Name not published by Intuit; inferred from selection sets (assignee { id }).
+"""
+type ProjectManagement_Project_assignee {
+  id: ID
+}
+
+"""
+Name not published by Intuit; inferred from selection sets
+(streetAddressLine1/2/3, state, postalCode) in SampleApp-Project-NodeJS graphql/project/getProjectsByFilter.js.
+"""
+type ProjectManagement_Project_addresses {
+  streetAddressLine1: String
+  streetAddressLine2: String
+  streetAddressLine3: String
+  state: String
+  postalCode: String
+}
+
+"""
+Email address (name and email selected in SampleApp-Project-NodeJS graphql/project/createProject.js).
+Type name Qb_EmailAddress is taken from the Qb_EmailAddressInput name used in the same file; output name is inferred.
+"""
+type Qb_EmailAddress {
+  email: String
+  name: String
+}
+
+"""
+Email address input.
+Source: IntuitDeveloper/SampleApp-Project-NodeJS graphql/project/createProject.js ($emailAddress: [Qb_EmailAddressInput]); createProjectVariables sends { email }.
+Only the email field is evidenced for input.
+"""
+input Qb_EmailAddressInput {
+  email: String
+}
+
+"""
+Connection returned by projectManagementProjects.
+Source: intuit/intuit-cli-for-quickbooks src/commands/projects.list.ts (edges, node, pageInfo). Connection name inferred.
+"""
+type ProjectManagement_ProjectConnection {
+  edges: [ProjectManagement_ProjectEdge]
+  pageInfo: PageInfo
+}
+
+"""
+Edge type for ProjectManagement_ProjectConnection. Name inferred.
+"""
+type ProjectManagement_ProjectEdge {
+  node: ProjectManagement_Project
+}
+
+"""
+Filter for projectManagementProjects.
+Source: intuit/intuit-cli-for-quickbooks src/commands/projects.list.ts (dueDate between, status eq);
+IntuitDeveloper/SampleApp-Project-NodeJS graphql/project/getProjectsByFilter.js (id, customer, deleted, startDate, dueDate, priority, type, status);
+SampleApp-EmployeeCompensation-DotNet Services/GraphQLHelper.cs (completedDate and between/greaterThanOrEqualTo/lessThanOrEqualTo operators).
+Input type name ProjectManagement_ProjectFilter is evidenced; field types are the operator shapes seen in code.
+"""
+input ProjectManagement_ProjectFilter {
+  id: ProjectManagement_ProjectFilter_id
+  customer: ProjectManagement_ProjectFilter_customer
+  "Plain boolean filter (not wrapped in an operator object) per SampleApp-Project-NodeJS."
+  deleted: Boolean
+  startDate: ProjectManagement_ProjectDateFilter
+  dueDate: ProjectManagement_ProjectDateFilter
+  completedDate: ProjectManagement_ProjectDateFilter
+  priority: ProjectManagement_ProjectFilter_priority
+  type: ProjectManagement_ProjectFilter_type
+  status: ProjectManagement_ProjectFilter_status
+}
+
+"""
+Name not published; inferred from the samples' filter objects ({ in: [...] }).
+"""
+input ProjectManagement_ProjectFilter_id {
+  in: [ID]
+}
+
+"""
+Name not published; inferred from SampleApp-Project-NodeJS (customer = { in: [{ id }] }).
+"""
+input ProjectManagement_ProjectFilter_customer {
+  in: [ProjectManagement_CustomerInput]
+}
+
+"""
+Name not published; inferred from SampleApp-Project-NodeJS (priority = { in: [Int] }).
+"""
+input ProjectManagement_ProjectFilter_priority {
+  in: [Int]
+}
+
+"""
+Name not published; inferred from SampleApp-Project-NodeJS (type = { in: [String] }). Type values not enumerated in source.
+"""
+input ProjectManagement_ProjectFilter_type {
+  in: [String]
+}
+
+"""
+Name not published; inferred. eq is used in intuit/intuit-cli-for-quickbooks projects.list.ts; in is used in SampleApp-Project-NodeJS and Prompt-Library.
+"""
+input ProjectManagement_ProjectFilter_status {
+  eq: ProjectManagement_Status
+  in: [ProjectManagement_Status]
+}
+
+"""
+Date-range filter shared by startDate, dueDate and completedDate.
+Source: SampleApp-Project-NodeJS getProjectsByFilter.js (between: { minDate, maxDate });
+SampleApp-EmployeeCompensation-DotNet Services/GraphQLHelper.cs (between, greaterThanOrEqualTo, lessThanOrEqualTo).
+Name inferred. The three date fields sharing one type is an inference.
+"""
+input ProjectManagement_ProjectDateFilter {
+  between: ProjectManagement_DateBetween
+  greaterThanOrEqualTo: DateTime
+  lessThanOrEqualTo: DateTime
+}
+
+"""
+Inclusive date range. Name inferred; minDate/maxDate evidenced in CLI and sample code.
+"""
+input ProjectManagement_DateBetween {
+  minDate: DateTime
+  maxDate: DateTime
+}
+
+"""
+Reference to a customer. Source: SampleApp-Project-NodeJS graphql/project/createProject.js ($customer: ProjectManagement_CustomerInput).
+Field set (id) from projects.create.ts. Input name is evidenced; fields beyond id are not.
+"""
+input ProjectManagement_CustomerInput {
+  id: ID
+}
+
+"""
+Reference to a company (account). Source: SampleApp-Project-NodeJS graphql/project/updateProject.js ($account: ProjectManagement_CompanyInput).
+"""
+input ProjectManagement_CompanyInput {
+  id: ID
+}
+
+"""
+Input for projectManagementCreateProject.
+Source: intuit/intuit-cli-for-quickbooks src/commands/projects.create.ts (mutation variables);
+SampleApp-Project-NodeJS README.md (ProjectManagement_CreateProjectInput) and graphql/project/createProject.js.
+Nullability: CLI declares dueDate non-null, the Node sample declares it nullable. Declared nullable here.
+"""
+input ProjectManagement_CreateProjectInput {
+  name: String!
+  description: String
+  startDate: DateTime
+  dueDate: DateTime
+  status: ProjectManagement_Status
+  customer: ProjectManagement_CustomerInput
+  priority: Int
+  pinned: Boolean
+  completionRate: Decimal
+  emailAddress: [Qb_EmailAddressInput]
+}
+
+"""
+Input for projectManagementUpdateProject.
+Source: intuit/intuit-cli-for-quickbooks src/commands/projects.update.ts; SampleApp-Project-NodeJS graphql/project/updateProject.js (adds account).
+Input type name not published in source; inferred from the mutation.
+"""
+input ProjectManagement_UpdateProjectInput {
+  id: ID!
+  name: String
+  description: String
+  status: ProjectManagement_Status
+  startDate: DateTime
+  dueDate: DateTime
+  customer: ProjectManagement_CustomerInput
+  account: ProjectManagement_CompanyInput
+  priority: Int
+  completionRate: Decimal
+  pinned: Boolean
+}
+
+"""
+Input for projectManagementDeleteProject.
+Source: intuit/intuit-cli-for-quickbooks src/commands/projects.delete.ts (input: { id: $id }, $id: ID!).
+Input type name not published; inferred.
+"""
+input ProjectManagement_DeleteProjectInput {
+  id: ID!
+}
+
+# ---------------------------------------------------------------------------
+# Custom fields (app-foundations.custom-field-definitions scope family)
+# ---------------------------------------------------------------------------
+
+"""
+Custom field data type.
+Values STRING, NUMBER, DATE: SampleApp-CustomFields-DotNet Services/CustomFieldService.cs (validDataTypes; comment names the enum AppFoundations_CustomExtensionDataType).
+STRING_LIST, OBJECT_LIST, UNKNOWN: IntuitDeveloper/Prompt-Library discover/prompt-config.json and custom-fields prompt templates.
+BOOLEAN is deliberately omitted: SampleApp-CustomFields-DotNet states "BOOLEAN is not supported in AppFoundations_CustomExtensionDataType enum"
+(the CLI custom-fields.create.ts accepts BOOLEAN in its own validation; this conflict is unresolved).
+"""
+enum AppFoundations_CustomExtensionDataType {
+  STRING
+  NUMBER
+  DATE
+  STRING_LIST
+  OBJECT_LIST
+  UNKNOWN
+}
+
+"""
+Association condition. Values INCLUDED and EXCLUDED seen in intuit-cli-for-quickbooks custom-fields.create.ts and the Prompt-Library docs.
+Enum name not published; inferred.
+"""
+enum AppFoundations_AssociationCondition {
+  INCLUDED
+  EXCLUDED
+}
+
+"""
+Allowed UI operations for a custom field association.
+Values SEARCH, PRINT, REPORTS: IntuitDeveloper/Prompt-Library custom-fields prompt template (subset of SEARCH, PRINT, REPORTS).
+PRINT: SampleApp-CustomFields-DotNet Services/CustomFieldService.cs (allowedOperations: [PRINT]).
+Enum name not published; inferred.
+"""
+enum AppFoundations_AllowedOperation {
+  SEARCH
+  PRINT
+  REPORTS
+}
+
+"""
+A custom field definition.
+Source: SampleApp-CustomFields-Java src/main/resources/static/graphql/custom_fields.graphql;
+intuit/intuit-cli-for-quickbooks src/commands/custom-fields.list.ts, custom-fields.create.ts, custom-fields.update.ts;
+Sampleapp-Customfields-Nodejs graphql/customfields/getAllCustomFields.js (customFieldDefinitionMetaModel);
+IntuitDeveloper/Prompt-Library discover/prompt-config.json (custom_field_definitions_query: legacyID, required, colorCode, entityVersion, createdSource).
+Scope: app-foundations.custom-field-definitions (write) and app-foundations.custom-field-definitions.read (read), per the sample apps' README/config.
+"""
+type AppFoundations_CustomFieldDefinition {
+  id: ID
+  "Deprecated opaque form. Source: Prompt-Library prompt-config.json (custom_field_definitions_query). Type inferred from examples."
+  legacyID: String
+  "Bare numeric id used as DefinitionId in REST V3 calls. Source: intuit-cli-for-quickbooks custom-fields.attach.ts. Declared ID so string and numeric inputs both coerce."
+  legacyIDV2: ID
+  label: String
+  dataType: AppFoundations_CustomExtensionDataType
+  "Source: Prompt-Library prompt-config.json (custom_field_definitions_query). Only Prompt-Library evidences this field."
+  required: Boolean
+  active: Boolean
+  "Source: Prompt-Library prompt-config.json only. Type inferred from examples."
+  colorCode: String
+  "Source: Prompt-Library prompt-config.json only. Type inferred from examples."
+  entityVersion: String
+  "Source: Prompt-Library prompt-config.json only. Type inferred from examples."
+  createdSource: String
+  dropDownOptions: [AppFoundations_CustomFieldDefinition_dropDownOptions]
+  associations: [AppFoundations_CustomFieldDefinition_associations]
+  customFieldDefinitionMetaModel: AppFoundations_CustomFieldDefinition_customFieldDefinitionMetaModel
+}
+
+"""
+Dropdown option of a STRING_LIST / OBJECT_LIST custom field.
+Source: intuit-cli-for-quickbooks custom-fields.list.ts (id, value, active, order); Sampleapp-Customfields-Nodejs graphql/customfields/*.js.
+Name not published; inferred.
+"""
+type AppFoundations_CustomFieldDefinition_dropDownOptions {
+  id: ID
+  value: String
+  active: Boolean
+  order: Int
+}
+
+"""
+Entity association of a custom field definition.
+Source: intuit-cli-for-quickbooks custom-fields.list.ts and custom-fields.update.ts; SampleApp-CustomFields-DotNet Services/CustomFieldService.cs.
+Name not published; inferred.
+"""
+type AppFoundations_CustomFieldDefinition_associations {
+  associatedEntity: String
+  active: Boolean
+  associationCondition: AppFoundations_AssociationCondition
+  validationOptions: AppFoundations_CustomFieldDefinition_associations_validationOptions
+  allowedOperations: [AppFoundations_AllowedOperation]
+  subAssociations: [AppFoundations_CustomFieldDefinition_associations_subAssociations]
+}
+
+"""
+Name not published; inferred from selection sets ({ required }).
+"""
+type AppFoundations_CustomFieldDefinition_associations_validationOptions {
+  required: Boolean
+}
+
+"""
+Sub-association (narrows an association to a transaction or contact subtype).
+Source: intuit-cli-for-quickbooks custom-fields.list.ts; IntuitDeveloper/Prompt-Library custom-fields prompt (values SALE, SALE_INVOICE, SALE_ESTIMATE, SALE_CREDIT, SALE_REFUND, CUSTOMER, VENDOR, PROJECT).
+The field is associatedEntity (not associatedSubEntity). Name not published; inferred.
+"""
+type AppFoundations_CustomFieldDefinition_associations_subAssociations {
+  associatedEntity: String
+  active: Boolean
+  allowedOperations: [AppFoundations_AllowedOperation]
+  validationOptions: AppFoundations_CustomFieldDefinition_associations_validationOptions
+}
+
+"""
+Name not published; inferred from selection sets (customFieldDefinitionMetaModel { suggested }).
+Source: Sampleapp-Customfields-Nodejs graphql/customfields/getAllCustomFields.js.
+"""
+type AppFoundations_CustomFieldDefinition_customFieldDefinitionMetaModel {
+  suggested: Boolean
+}
+
+"""
+Edge for AppFoundations_CustomFieldDefinitionConnection. Name inferred from edges/node selections.
+"""
+type AppFoundations_CustomFieldDefinitionEdge {
+  node: AppFoundations_CustomFieldDefinition
+}
+
+"""
+Connection returned by appFoundationsCustomFieldDefinitions.
+Source: intuit-cli-for-quickbooks src/commands/custom-fields.list.ts (edges, node); Prompt-Library prompt-config.json (pageInfo). Connection name inferred.
+"""
+type AppFoundations_CustomFieldDefinitionConnection {
+  edges: [AppFoundations_CustomFieldDefinitionEdge]
+  pageInfo: PageInfo
+}
+
+"""
+Association input for create and update.
+Source: intuit-cli-for-quickbooks custom-fields.create.ts (active, associatedEntity, associationCondition, validationOptions, allowedOperations, subAssociations);
+custom-fields.update.ts; Prompt-Library custom-fields prompt (associations[] fields).
+Name not published; shared by create and update, inferred.
+"""
+input AppFoundations_CustomFieldDefinitionAssociationInput {
+  active: Boolean
+  associatedEntity: String
+  associationCondition: AppFoundations_AssociationCondition
+  validationOptions: AppFoundations_ValidationOptionsInput
+  allowedOperations: [AppFoundations_AllowedOperation]
+  subAssociations: [AppFoundations_CustomFieldDefinitionSubAssociationInput]
+}
+
+"""
+Sub-association input. Source: intuit-cli-for-quickbooks custom-fields.create.ts. Name not published; inferred.
+"""
+input AppFoundations_CustomFieldDefinitionSubAssociationInput {
+  associatedEntity: String
+  active: Boolean
+  allowedOperations: [AppFoundations_AllowedOperation]
+}
+
+"""
+Validation options input. Source: intuit-cli-for-quickbooks custom-fields.create.ts (validationOptions: { required }). Name not published; inferred.
+"""
+input AppFoundations_ValidationOptionsInput {
+  required: Boolean
+}
+
+"""
+Dropdown option input. Source: Prompt-Library custom-fields prompt (dropDownOptions[]: value, order);
+intuit-cli-for-quickbooks custom-fields.create.ts (value, active). Name not published; inferred. order type inferred (Int).
+"""
+input AppFoundations_CustomFieldDefinitionDropDownOptionInput {
+  value: String
+  active: Boolean
+  order: Int
+}
+
+"""
+Input for appFoundationsCreateCustomFieldDefinition.
+Source: intuit-cli-for-quickbooks custom-fields.create.ts ($input: AppFoundations_CustomFieldDefinitionCreateInput!);
+SampleApp-CustomFields-Java custom_fields.graphql; Prompt-Library custom-fields prompt (label and dataType required, associations required, required Boolean).
+Label max length is 30 characters per the Prompt-Library prompt (LABEL_LENGTH_EXCEEDED).
+"""
+input AppFoundations_CustomFieldDefinitionCreateInput {
+  label: String!
+  dataType: AppFoundations_CustomExtensionDataType!
+  active: Boolean
+  "Required per Prompt-Library custom-fields prompt. Whether the schema enforces it is unverified."
+  required: Boolean
+  associations: [AppFoundations_CustomFieldDefinitionAssociationInput]!
+  dropDownOptions: [AppFoundations_CustomFieldDefinitionDropDownOptionInput]
+}
+
+"""
+Input for appFoundationsUpdateCustomFieldDefinition.
+Source: intuit-cli-for-quickbooks custom-fields.update.ts; SampleApp-CustomFields-Java custom_fields_update.graphql;
+Prompt-Library custom-fields prompt. The prompt says the schema marks id required while legacyIDV2 and label are optional
+(the service layer enforces all three at runtime). Update replaces associations and dropDownOptions in full.
+"""
+input AppFoundations_CustomFieldDefinitionUpdateInput {
+  id: ID!
+  legacyIDV2: ID
+  label: String
+  active: Boolean
+  dataType: AppFoundations_CustomExtensionDataType
+  associations: [AppFoundations_CustomFieldDefinitionAssociationInput]
+  dropDownOptions: [AppFoundations_CustomFieldDefinitionDropDownOptionInput]
+}
+
+# ---------------------------------------------------------------------------
+# Dimensions (scope not evidenced in the sources)
+# ---------------------------------------------------------------------------
+
+"""
+A custom dimension definition.
+Source: intuit-cli-for-quickbooks src/commands/dimensions.list.ts; IntuitDeveloper/Prompt-Library discover/prompt-config.json (dimension_discovery_query fragment on AppFoundations_CustomDimensionDefinition).
+"""
+type AppFoundations_CustomDimensionDefinition {
+  id: ID
+  label: String
+  active: Boolean
+}
+
+"""
+Edge for AppFoundations_CustomDimensionDefinitionConnection. Name inferred.
+"""
+type AppFoundations_CustomDimensionDefinitionEdge {
+  node: AppFoundations_CustomDimensionDefinition
+}
+
+"""
+Connection returned by appFoundationsActiveCustomDimensionDefinitions. Source: intuit-cli-for-quickbooks src/commands/dimensions.list.ts (edges, node). Name inferred.
+"""
+type AppFoundations_CustomDimensionDefinitionConnection {
+  edges: [AppFoundations_CustomDimensionDefinitionEdge]
+}
+
+"""
+A custom dimension value. Source: intuit-cli-for-quickbooks src/commands/dimensions.values.ts (id, definitionId, label, active, parentId, fullyQualifiedLabel, level).
+Node type name not published; inferred.
+"""
+type AppFoundations_CustomDimensionValue {
+  id: ID
+  definitionId: ID
+  label: String
+  active: Boolean
+  parentId: ID
+  fullyQualifiedLabel: String
+  level: Int
+}
+
+"""
+Edge for AppFoundations_CustomDimensionValueConnection. Name inferred.
+"""
+type AppFoundations_CustomDimensionValueEdge {
+  node: AppFoundations_CustomDimensionValue
+}
+
+"""
+Connection returned by appFoundationsActiveCustomDimensionValues.
+Source: intuit-cli-for-quickbooks src/commands/dimensions.values.ts (edges, pageInfo, totalCount). Connection name inferred.
+"""
+type AppFoundations_CustomDimensionValueConnection {
+  edges: [AppFoundations_CustomDimensionValueEdge]
+  pageInfo: PageInfo
+  totalCount: Int
+}
+
+"""
+Filter for appFoundationsActiveCustomDimensionValues.
+Source: intuit-cli-for-quickbooks src/commands/dimensions.values.ts ($filters: AppFoundations_ActiveCustomDimensionValuesFilterBy!; definitionId, parentId: null);
+Prompt-Library dimensions prompt (filters: { definitionId: "...", parentId: null }). Field types inferred (ID).
+"""
+input AppFoundations_ActiveCustomDimensionValuesFilterBy {
+  definitionId: ID
+  parentId: ID
+}
+
+# ---------------------------------------------------------------------------
+# Sales tax (indirect-tax.tax-calculation.quickbooks scope)
+# ---------------------------------------------------------------------------
+
+"""
+Free-form address output. Source: SampleApp-SalesTax-Java src/main/resources/graphql/sales_tax.graphql;
+SampleApp-SalesTax-DotNet Services/SalesTaxService.cs and SampleApp-SalesTax-NodeJS graphql/salesTax/indirectTax.js select this as
+"freeformAddressLine" (lowercase f). The input side uses "freeFormAddressLine" (see IndirectTax_AddressInput). Both casings are kept as Intuit uses them.
+"""
+type IndirectTax_FreeFormAddress {
+  freeformAddressLine: String
+}
+
+"""
+Raw address union. Source: the samples use "... on IndirectTax_FreeFormAddress" fragments inside rawAddress. Union name inferred; only that member is seen.
+"""
+union IndirectTax_RawAddress = IndirectTax_FreeFormAddress
+
+"""
+Address input. Source: IntuitDeveloper/Prompt-Library discover/prompt-config.json (sales_tax_calculate_variables_example: freeFormAddressLine);
+discover/generated-prompts/sales-tax-ready-prompt.md (structured fields streetAddressLine1, city, region, postalCode);
+SampleApp-SalesTax-Java graphql_variables.json. Name IndirectTax_AddressInput is named in the Prompt-Library typing list.
+"""
+input IndirectTax_AddressInput {
+  freeFormAddressLine: String
+  streetAddressLine1: String
+  city: String
+  region: String
+  postalCode: String
+}
+
+"""
+Customer subject input. Source: Prompt-Library sales-tax-ready-prompt.md (subject: { qbCustomerId }).
+Name not published; inferred. qbCustomerId is ID-like and sample values are strings ("1").
+"""
+input IndirectTax_TaxCalculationInput_subject {
+  qbCustomerId: ID
+}
+
+"""
+Shipping input. Source: Prompt-Library sales-tax-ready-prompt.md (IndirectTax_ShipmentInput named there; shipFromAddress, shipToAddress, shippingFee).
+"""
+input IndirectTax_ShipmentInput {
+  shipFromAddress: IndirectTax_AddressInput
+  shipToAddress: IndirectTax_AddressInput
+  shippingFee: MoneyInput
+}
+
+"""
+Product variant tax classification input. Source: SampleApp-SalesTax-NodeJS graphql/salesTax/indirectTax.js; Prompt-Library sales-tax prompt.
+productVariantId accepts a quoted string or an integer per the Prompt-Library ("both verified live"); declared ID.
+Name not published; inferred.
+"""
+input IndirectTax_TaxCalculationLineInput_productVariantTaxability {
+  productVariantId: ID
+}
+
+"""
+Line item input. Source: Prompt-Library sales-tax-ready-prompt.md (IndirectTax_TaxCalculationLineInput named there);
+SampleApp-SalesTax-NodeJS graphql/salesTax/indirectTax.js (numberOfUnits, pricePerUnitExcludingTaxes, totalPriceExcludingTaxes, productVariantTaxability).
+pricePerUnitIncludingTaxes is mentioned in the Prompt-Library sales-tax "Technical Best Practices" section as a schema field.
+"""
+input IndirectTax_TaxCalculationLineInput {
+  numberOfUnits: Int
+  pricePerUnitExcludingTaxes: MoneyInput
+  pricePerUnitIncludingTaxes: MoneyInput
+  totalPriceExcludingTaxes: MoneyInput
+  productVariantTaxability: IndirectTax_TaxCalculationLineInput_productVariantTaxability
+}
+
+"""
+Input for indirectTaxCalculateSaleTransactionTax.
+Source: SampleApp-SalesTax-Java src/main/resources/graphql/sales_tax.graphql ($input: IndirectTax_TaxCalculationInput!);
+Prompt-Library sales-tax-ready-prompt.md (transactionDate Date; subject, shipping, lineItems required; lineItems may be [] but not null).
+transactionDate is typed Date per the prompt. The DotNet README table says DateTime; unresolved.
+"""
+input IndirectTax_TaxCalculationInput {
+  transactionDate: Date
+  subject: IndirectTax_TaxCalculationInput_subject!
+  shipping: IndirectTax_ShipmentInput!
+  lineItems: [IndirectTax_TaxCalculationLineInput]!
+}
+
+"""
+Rate percentage applied. Source: Prompt-Library sales-tax-ready-prompt.md ("... on IndirectTax_RatePercentage { rate }").
+rate type inferred from SampleApp-SalesTax-DotNet README example values (0.0913) as Decimal.
+"""
+type IndirectTax_RatePercentage {
+  rate: Decimal
+}
+
+"""
+Union for ratePercentageApplied. Source: Prompt-Library sales-tax-ready-prompt.md uses a fragment on IndirectTax_RatePercentage. Union name inferred.
+"""
+union IndirectTax_RatePercentageApplied = IndirectTax_RatePercentage
+
+"""
+Tax rate reference. Source: Prompt-Library sales-tax-ready-prompt.md (taxRate { taxRate { taxRateReferenceId } }). Name not published; inferred.
+"""
+type IndirectTax_TaxRateReference {
+  taxRateReferenceId: ID
+}
+
+"""
+Tax rate. Source: Prompt-Library sales-tax-ready-prompt.md (taxRate { name taxRate { taxRateReferenceId } }); SampleApp-SalesTax-DotNet Models (name). Name not published; inferred.
+"""
+type IndirectTax_TaxRate {
+  name: String
+  taxRate: IndirectTax_TaxRateReference
+}
+
+"""
+Address in a calculation response. Source: SampleApp-SalesTax-Java sales_tax.graphql (shipToAddress/shipFromAddress { rawAddress }); SampleApp-SalesTax-DotNet Models (streetAddressLine1).
+Used for both shipToAddress and shipFromAddress. Name not published; inferred.
+"""
+type IndirectTax_Address {
+  streetAddressLine1: String
+  rawAddress: IndirectTax_RawAddress
+}
+
+"""
+Customer reference in a calculation response. Source: SampleApp-SalesTax-Java sales_tax.graphql (subject { customer { id } }). Name not published; inferred.
+"""
+type IndirectTax_Customer {
+  id: ID
+}
+
+"""
+Subject of a calculation response. Source: Prompt-Library sales-tax-ready-prompt.md (subject { customer { id } taxExemption }).
+taxExemption values: NOT_EXEMPT seen; other values appear per the prompt but are not enumerated, so String.
+Name not published; inferred.
+"""
+type IndirectTax_TaxCalculationSubject {
+  customer: IndirectTax_Customer
+  taxExemption: String
+}
+
+"""
+Shipping section of a calculation response. Source: Prompt-Library sales-tax-ready-prompt.md; SampleApp-SalesTax-Node/Java selections (taxAmount, shippingFee).
+Name not published; inferred.
+"""
+type IndirectTax_TaxCalculationShipping {
+  shipToAddress: IndirectTax_Address
+  shipFromAddress: IndirectTax_Address
+  taxAmount: Money
+  shippingFee: Money
+}
+
+"""
+Tax detail for one rate on a line. Source: Prompt-Library sales-tax-ready-prompt.md (taxDetails selections); SampleApp-SalesTax-DotNet Models/SalesTaxModels.cs (taxAmount, taxableAmount, taxRate).
+Name not published; inferred.
+"""
+type IndirectTax_TaxDetail {
+  taxAmount: Money
+  taxableAmount: Money
+  taxExemptAmount: Money
+  ratePercentageApplied: IndirectTax_RatePercentageApplied
+  taxRate: IndirectTax_TaxRate
+}
+
+"""
+Breakdown of tax by rate. Source: Prompt-Library sales-tax-ready-prompt.md (taxTotals.aggregatedTaxesExcludingShippingByRate[]). Name not published; inferred.
+"""
+type IndirectTax_TaxBreakdown {
+  taxableAmount: Money
+  taxAmount: Money
+  ratePercentageApplied: IndirectTax_RatePercentageApplied
+  taxRate: IndirectTax_TaxRate
+}
+
+"""
+Product reference. Source: SampleApp-SalesTax-Java sales_tax.graphql and SampleApp-SalesTax-NodeJS (productVariantTaxability { product { id } }). Name not published; inferred.
+"""
+type IndirectTax_Product {
+  id: ID
+}
+
+"""
+Product variant tax classification in a response. Source: Prompt-Library sales-tax-ready-prompt.md (classificationCode, e.g. "EUC-..."); SampleApp-SalesTax-Java/Node (product { id }).
+Name not published; inferred.
+"""
+type IndirectTax_ProductVariantTaxability {
+  classificationCode: String
+  product: IndirectTax_Product
+}
+
+"""
+Line item in a calculation response. Source: Prompt-Library sales-tax-ready-prompt.md (lineItems.nodes[]), SampleApp-SalesTax-DotNet Models (numberOfUnits, totalPriceExcludingTaxes, taxAmount, productVariantTaxability, taxDetails),
+SampleApp-SalesTax-NodeJS (edges.node.pricePerUnitExcludingTaxes).
+The same type is used for both lineItems.edges[].node and lineItems.nodes[] because the samples select overlapping fields from each; this is a superset reconstruction.
+Name not published; inferred.
+"""
+type IndirectTax_TaxCalculationLineItem {
+  numberOfUnits: Int
+  pricePerUnitExcludingTaxes: Money
+  totalPriceExcludingTaxes: Money
+  taxAmount: Money
+  productVariantTaxability: IndirectTax_ProductVariantTaxability
+  taxDetails: [IndirectTax_TaxDetail]
+}
+
+"""
+Edge over line items. Source: SampleApp-SalesTax-Java sales_tax.graphql (lineItems { edges { node } }). Name inferred.
+"""
+type IndirectTax_TaxCalculationLineItemEdge {
+  node: IndirectTax_TaxCalculationLineItem
+}
+
+"""
+Line items of a calculation response. Source: SampleApp-SalesTax-Java sales_tax.graphql (lineItems { edges { node } nodes { ... } }). Name not published; inferred.
+"""
+type IndirectTax_TaxCalculationLineItems {
+  edges: [IndirectTax_TaxCalculationLineItemEdge]
+  nodes: [IndirectTax_TaxCalculationLineItem]
+}
+
+"""
+Totals of a calculation response. Source: Prompt-Library sales-tax-ready-prompt.md (taxTotals { totalTaxAmountExcludingShipping aggregatedTaxesExcludingShippingByRate }).
+Name not published; inferred.
+"""
+type IndirectTax_TaxCalculationTotals {
+  totalTaxAmountExcludingShipping: Money
+  aggregatedTaxesExcludingShippingByRate: [IndirectTax_TaxBreakdown]
+}
+
+"""
+The calculated transaction. Source: Prompt-Library sales-tax-ready-prompt.md (taxCalculation { id transactionDate subject shipping lineItems taxTotals });
+SampleApp-SalesTax-DotNet Models (transactionDate, taxTotals, subject, shipping, lineItems).
+id is always "0" for stateless calculations (per the prompt). transactionDate declared DateTime because samples show "2025-06-17T00:00:00".
+Name not published; inferred from the payload field.
+"""
+type IndirectTax_TaxCalculationPayload_taxCalculation {
+  id: ID
+  transactionDate: DateTime
+  subject: IndirectTax_TaxCalculationSubject
+  shipping: IndirectTax_TaxCalculationShipping
+  taxTotals: IndirectTax_TaxCalculationTotals
+  lineItems: IndirectTax_TaxCalculationLineItems
+}
+
+"""
+Result of indirectTaxCalculateSaleTransactionTax.
+Source: SampleApp-SalesTax-Java sales_tax.graphql (taxCalculation selected directly);
+Prompt-Library sales-tax-ready-prompt.md selects via "... on IndirectTax_TaxCalculationPayload" (valid on the same type).
+Return type may be abstract in Intuit's schema; declared as the concrete payload type because no other member was seen.
+"""
+type IndirectTax_TaxCalculationPayload {
+  taxCalculation: IndirectTax_TaxCalculationPayload_taxCalculation
+}
+
+# ---------------------------------------------------------------------------
+# Payroll (payroll.compensation.read scope; EmployeeCompensation sample sends these to qb.api.intuit.com)
+# ---------------------------------------------------------------------------
+
+"""
+Employer compensation type descriptor. Source: SampleApp-EmployeeCompensation-DotNet Controllers/SetupController.cs (type { key description value }).
+Field types inferred as String. Name not published; inferred.
+"""
+type Payroll_EmployeeCompensation_employerCompensation_type {
+  key: String
+  description: String
+  value: String
+}
+
+"""
+Employer compensation reference. Source: SampleApp-EmployeeCompensation-DotNet Controllers/SetupController.cs (employerCompensation { id name type }). Name not published; inferred.
+"""
+type Payroll_EmployeeCompensation_employerCompensation {
+  id: ID
+  name: String
+  type: Payroll_EmployeeCompensation_employerCompensation_type
+}
+
+"""
+Employee compensation record. Source: SampleApp-EmployeeCompensation-DotNet Controllers/SetupController.cs (payrollEmployeeCompensations node { id active employerCompensation }).
+Name not published; inferred.
+"""
+type Payroll_EmployeeCompensation {
+  id: ID
+  active: Boolean
+  employerCompensation: Payroll_EmployeeCompensation_employerCompensation
+}
+
+"""
+Edge for Payroll_EmployeeCompensationConnection. Name inferred.
+"""
+type Payroll_EmployeeCompensationEdge {
+  node: Payroll_EmployeeCompensation
+}
+
+"""
+Connection returned by payrollEmployeeCompensations. Name inferred.
+"""
+type Payroll_EmployeeCompensationConnection {
+  edges: [Payroll_EmployeeCompensationEdge]
+}
+
+"""
+Filter for payrollEmployeeCompensations.
+Source: SampleApp-EmployeeCompensation-DotNet Controllers/SetupController.cs ($filter: Payroll_EmployeeCompensationsFilter!; variables employeeId, active).
+Field types: employeeId ID (string in the sample), active Boolean (nullable bool in the sample's request model). Input name is evidenced.
+"""
+input Payroll_EmployeeCompensationsFilter {
+  employeeId: ID
+  active: Boolean
+}
+
+"""
+Input for createTimeActivity. Source: SampleApp-EmployeeCompensation-DotNet Services/EmployeeCompensationService.cs
+(variables employeeId, projectId, customerId, itemId, date "yyyy-MM-dd", hours, hourlyRate, description, billable; models declare hours and hourlyRate as decimal).
+Input type name TimeActivityInput is evidenced in the mutation declaration. Field types inferred from the request model.
+"""
+input TimeActivityInput {
+  employeeId: ID
+  projectId: ID
+  customerId: ID
+  itemId: ID
+  date: Date
+  hours: Decimal
+  hourlyRate: Decimal
+  description: String
+  billable: Boolean
+}
+
+"""
+Reference used in TimeActivity output (employee, project and customer selections). Source: SampleApp-EmployeeCompensation-DotNet Services/EmployeeCompensationService.cs. Name not published; inferred.
+"""
+type TimeActivityRef {
+  id: ID
+  name: String
+}
+
+"""
+A time activity. Source: SampleApp-EmployeeCompensation-DotNet Services/EmployeeCompensationService.cs (createTimeActivity selection: id, date, hours, description, billable, employee, project, customer).
+This is a sample-level mutation; it is not present in the CLI or other Intuit sources. Type name inferred.
+"""
+type TimeActivity {
+  id: ID
+  date: Date
+  hours: Decimal
+  description: String
+  billable: Boolean
+  employee: TimeActivityRef
+  project: TimeActivityRef
+  customer: TimeActivityRef
+}
+
+# ---------------------------------------------------------------------------
+# Root operations
+# ---------------------------------------------------------------------------
+
+"""
+Root query type. Operations are grouped by area below.
+"""
+type Query {
+  """
+  List custom field definitions (paginated). Scope: app-foundations.custom-field-definitions.read.
+  Source: intuit/intuit-cli-for-quickbooks src/commands/custom-fields.list.ts (no args; CLI paginates via pageInfo) and
+  SampleApp-CustomFields-Python FlaskApp/static/graphql/query_custom_field.graphql;
+  first and after args from IntuitDeveloper/Prompt-Library discover/prompt-config.json (custom_field_definitions_query: first: 50, after: $cursor; $cursor String).
+  The Prompt-Library query also passes filters: { active: true }; the input type for filters is not published, so it is omitted here.
+  """
+  appFoundationsCustomFieldDefinitions(first: Int, after: String): AppFoundations_CustomFieldDefinitionConnection
+
+  """
+  List active custom dimension definitions.
+  Source: intuit/intuit-cli-for-quickbooks src/commands/dimensions.list.ts (first: 100, after/last/before null);
+  IntuitDeveloper/Prompt-Library discover/prompt-config.json (dimension_discovery_query).
+  Scope: not evidenced in the sources. Last and before types inferred (Relay convention).
+  """
+  appFoundationsActiveCustomDimensionDefinitions(first: Int, after: String, last: Int, before: String): AppFoundations_CustomDimensionDefinitionConnection
+
+  """
+  List active custom dimension values for a definition.
+  Source: intuit/intuit-cli-for-quickbooks src/commands/dimensions.values.ts ($first: Int, $after: String, $filters: AppFoundations_ActiveCustomDimensionValuesFilterBy!).
+  Scope: not evidenced in the sources.
+  """
+  appFoundationsActiveCustomDimensionValues(first: Int, after: String, filters: AppFoundations_ActiveCustomDimensionValuesFilterBy!): AppFoundations_CustomDimensionValueConnection
+
+  """
+  List projects with a filter and cursor pagination. Scope: project-management.project (SampleApp-Project-NodeJS README.md: "Required for Projects API access").
+  Source: intuit/intuit-cli-for-quickbooks src/commands/projects.list.ts; SampleApp-Project-NodeJS graphql/project/getProjectsByFilter.js;
+  SampleApp-EmployeeCompensation-DotNet Services/GraphQLHelper.cs.
+  """
+  projectManagementProjects(first: PositiveInt!, after: String, filter: ProjectManagement_ProjectFilter!, orderBy: [ProjectManagement_OrderBy!]): ProjectManagement_ProjectConnection
+
+  """
+  Get one project by id. Scope: project-management.project.
+  Source: intuit/intuit-cli-for-quickbooks src/commands/projects.get.ts (id: ID!; pinned, completionRate, customer, account);
+  SampleApp-Project-NodeJS graphql/project/getProjectById.js.
+  """
+  projectManagementProject(id: ID!): ProjectManagement_Project
+
+  """
+  List a employee's compensation records. Scope: payroll.compensation.read (SampleApp-EmployeeCompensation-DotNet appsettings.json).
+  Source: SampleApp-EmployeeCompensation-DotNet Controllers/SetupController.cs. This operation is sent to https://qb.api.intuit.com/graphql by that sample.
+  PayrollSamples (v4thirdparty.api.intuit.com) uses a different company/compensations shape that is not included here.
+  """
+  payrollEmployeeCompensations(filter: Payroll_EmployeeCompensationsFilter!): Payroll_EmployeeCompensationConnection
+}
+
+"""
+Root mutation type. Operations are grouped by area below.
+"""
+type Mutation {
+  """
+  Create a custom field definition. Scope: app-foundations.custom-field-definitions.
+  Source: intuit/intuit-cli-for-quickbooks src/commands/custom-fields.create.ts (mutation AppFoundationsCreateCustomFieldDefinition, $input typed AppFoundations_CustomFieldDefinitionCreateInput!);
+  SampleApp-CustomFields-Java custom_fields.graphql; SampleApp-CustomFields-DotNet Services/CustomFieldService.cs.
+  """
+  appFoundationsCreateCustomFieldDefinition(input: AppFoundations_CustomFieldDefinitionCreateInput!): AppFoundations_CustomFieldDefinition
+
+  """
+  Update (or disable, with active: false) a custom field definition. Scope: app-foundations.custom-field-definitions.
+  Source: intuit/intuit-cli-for-quickbooks src/commands/custom-fields.update.ts; SampleApp-CustomFields-Java custom_fields_update.graphql;
+  Prompt-Library discover/prompt-config.json (custom_field_update_definition_mutation). Full replace for associations and dropDownOptions.
+  """
+  appFoundationsUpdateCustomFieldDefinition(input: AppFoundations_CustomFieldDefinitionUpdateInput!): AppFoundations_CustomFieldDefinition
+
+  """
+  Create a project. Scope: project-management.project.
+  Source: intuit/intuit-cli-for-quickbooks src/commands/projects.create.ts (mutation ProjectManagementCreateProject);
+  SampleApp-Project-NodeJS graphql/project/createProject.js.
+  The sample selects "... on ProjectManagement_Project"; the return type is declared as that object type.
+  """
+  projectManagementCreateProject(input: ProjectManagement_CreateProjectInput!): ProjectManagement_Project
+
+  """
+  Update a project. Scope: project-management.project.
+  Source: intuit/intuit-cli-for-quickbooks src/commands/projects.update.ts (mutation projectManagementUpdateProject);
+  SampleApp-Project-NodeJS graphql/project/updateProject.js (adds account).
+  """
+  projectManagementUpdateProject(input: ProjectManagement_UpdateProjectInput!): ProjectManagement_Project
+
+  """
+  Delete a project. Scope: project-management.project.
+  Source: intuit/intuit-cli-for-quickbooks src/commands/projects.delete.ts; SampleApp-Project-NodeJS graphql/project/deleteProject.js (selects id, deleted).
+  """
+  projectManagementDeleteProject(input: ProjectManagement_DeleteProjectInput!): ProjectManagement_Project
+
+  """
+  Calculate sales tax for a transaction (stateless; nothing is persisted). Scope: indirect-tax.tax-calculation.quickbooks
+  (Prompt-Library sales-tax-ready-prompt.md: "separate from com.intuit.quickbooks.accounting").
+  Source: SampleApp-SalesTax-Java src/main/resources/graphql/sales_tax.graphql (mutation IndirectTaxCalculateSaleTransactionTax);
+  SampleApp-SalesTax-NodeJS graphql/salesTax/indirectTax.js; SampleApp-SalesTax-DotNet Services/SalesTaxService.cs;
+  IntuitDeveloper/Prompt-Library discover/prompt-config.json (sales_tax_calculate_mutation). This is the only sales tax operation seen.
+  """
+  indirectTaxCalculateSaleTransactionTax(input: IndirectTax_TaxCalculationInput!): IndirectTax_TaxCalculationPayload
+
+  """
+  Create a time activity. Scope: not evidenced.
+  Source: SampleApp-EmployeeCompensation-DotNet Services/EmployeeCompensationService.cs (mutation CreateTimeActivity). Sample-only; not in the CLI.
+  """
+  createTimeActivity(timeActivity: TimeActivityInput!): TimeActivity
+}
