@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { normalize } from './parser.js';
+import { normalize, pathPart, referenceTarget } from './parser.js';
 
 const singular = word => word.endsWith('ies') ? `${word.slice(0,-3)}y` : word.endsWith('sses') ? word.slice(0,-2) : word.endsWith('s') && !word.endsWith('ss') ? word.slice(0,-1) : word;
 const humanize = value => value.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[-_]/g,' ').split(/\s+/).filter(Boolean).map((part,index)=>index?part.toLowerCase():part[0].toUpperCase()+part.slice(1).toLowerCase()).join(' ');
@@ -26,7 +26,7 @@ function resourceDescription(resource, candidates) {
 
 function routeOf(operation) {
   if (operation.kind === 'webhook') return null;
-  const parts = operation.path.split('/').filter(Boolean).filter(part => !/^(?:api|v\d+(?:\.\d+)?|\d+(?:\.\d+)?)$/i.test(part));
+  const parts = pathPart(operation.path).split('/').filter(Boolean).filter(part => !/^(?:api|v\d+(?:\.\d+)?|\d+(?:\.\d+)?)$/i.test(part));
   const root = parts[0];
   if (!root || /^\{/.test(root)) return null;
   // A nested endpoint is a member of its root reference family. The
@@ -35,7 +35,7 @@ function routeOf(operation) {
 }
 
 function legacyNestedKey(operation) {
-  const parts=operation.path.split('/').filter(Boolean).filter(part=>!/^(?:api|v\d+(?:\.\d+)?|\d+(?:\.\d+)?)$/i.test(part));
+  const parts=pathPart(operation.path).split('/').filter(Boolean).filter(part=>!/^(?:api|v\d+(?:\.\d+)?|\d+(?:\.\d+)?)$/i.test(part));
   return operation.method==='GET' && /^\{[^}]+\}$/.test(parts[1]||'') && /^[a-z][a-z-]*s$/i.test(parts[2]||'') && parts.length===3 ? `${parts[0]}/${parts[2]}` : null;
 }
 
@@ -117,8 +117,7 @@ function inferResourceIdLinks(analysis) {
     const fields=new Map([...entity.fields,...writes.flatMap(operation=>operation.inputs||[])].map(field=>[field.name.replace(/^data\[\]\./,''),field]));
     for (const [name,field] of fields) {
       const leaf=name.split('.').pop().replace(/\[\]/g,'');
-      if (!/(?:_id|Id|_ids|Ids)$/.test(leaf)) continue;
-      const source=byName.get(normalize(leaf.replace(/(?:_ids?|Ids?)$/,'')));
+      const source=referenceTarget(leaf,byName);
       if (!source || source.id===entity.id) continue;
       const key=`${source.id}|${entity.id}|${normalize(name)}`;
       if (existing.has(key)) continue;
@@ -166,6 +165,13 @@ export function canonicalizeAnalysis(analysis) {
       resource.schemaNames.push(entity.rawName || entity.name);
       if (votes.size || normalize(entity.rawName||entity.name)===normalize(resource.name)) direct.add(entity.id);
     }
+  }
+  // Lowercase run-together roots (`/salesreceipt`) lose word boundaries. Take
+  // them from a same-named schema or tag instead: SalesReceipt -> "Sales receipt".
+  for (const resource of resourceList) {
+    if (/\s/.test(resource.name)) continue;
+    const spelled=[...resource.schemaNames,...resource.tagVotes.keys()].find(name=>/[a-z][A-Z]/.test(name) && normalize(name)===normalize(resource.name));
+    if (spelled) resource.name=resource.rawName=humanize(spelled);
   }
   // A prose-only or schema-only source has no path family to anchor its
   // inventory. Keep named entities, but collapse request/response variants.
@@ -248,8 +254,9 @@ export function canonicalizeAnalysis(analysis) {
   analysis.coverage.resourceCount=analysis.entities.length;
   reconcileResourceEndpoints(analysis);
   // 9 = complete top-level fields, webhooks kept out of resources. 10 = + servers and content types.
+  // 11 = + XxxRef reference links, query-string path variants, schema-spelled resource names.
   // Saved maps can be upgraded to 8 in place, but reaching 9 needs a fresh extraction.
-  analysis.coverage.canonicalVersion=10;
+  analysis.coverage.canonicalVersion=11;
   analysis.warnings.push(`${rawEntities.length} schema models were examined. ${analysis.entities.length} endpoint resource families are shown as entities; ${idMap.size} schemas were grouped under resources and ${rawEntities.length-idMap.size} supporting or error models were excluded from the resource graph.`);
   return analysis;
 }

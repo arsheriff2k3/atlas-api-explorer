@@ -104,5 +104,27 @@ test('webhook events do not become a resource or count as its endpoints',()=>{
   canonicalizeAnalysis(analysis);
   assert.deepEqual(analysis.entities.map(item=>item.name),['Invoice']);
   assert.deepEqual(analysis.entities[0].operationIds,['create-invoice']);
-  assert.equal(analysis.coverage.canonicalVersion,10);
+  assert.equal(analysis.coverage.canonicalVersion,11);
+});
+
+test('query-string disambiguators stay in their resource and run-together roots take schema word boundaries',()=>{
+  const write=(id,path,name)=>({...operation(id,path,name,['receipt']),method:'POST'});
+  const analysis={entities:[entity('receipt','SalesReceipt',['create','update','void'])],
+    operations:[write('create','/salesreceipt','Create'),write('update','/salesreceipt?operation=update','Update'),write('void','/salesreceipt?include=void','Void')],dependencies:[],coverage:{},warnings:[]};
+  canonicalizeAnalysis(analysis);
+  assert.deepEqual(analysis.entities.map(item=>item.name),['Sales receipt']);
+  assert.equal(analysis.entities[0].operationIds.length,3);
+});
+
+test('reference-object fields link to the named resource, including qualified names',()=>{
+  const write=(id,path)=>({...operation(id,path,'Create'),method:'POST'});
+  const analysis={entities:[
+    entity('account','Account',['create-account']),
+    entity('customer','Customer',['create-customer']),
+    entity('invoice','Invoice',['create-invoice'],[{name:'CustomerRef',type:'object',required:true,description:''},{name:'DepositToAccountRef',type:'object',required:false,description:''},{name:'Reference',type:'string',required:false,description:''}]),
+  ],operations:[write('create-account','/account'),write('create-customer','/customer'),write('create-invoice','/invoice')],dependencies:[],coverage:{},warnings:[]};
+  analysis.operations.forEach((item,index)=>item.entityIds=[analysis.entities[index].id]);
+  canonicalizeAnalysis(analysis);
+  const name=id=>analysis.entities.find(item=>item.id===id).name;
+  assert.deepEqual(analysis.dependencies.map(link=>`${name(link.source)}>${name(link.target)}:${link.field}`).sort(),['Account>Invoice:DepositToAccountRef','Customer>Invoice:CustomerRef']);
 });

@@ -5,6 +5,23 @@ export const clean = (s = '') => String(s).replace(/<[^>]+>/g,' ').replace(/\[([
 export const normalize = (s = '') => s.replace(/([a-z])([A-Z])/g,'$1_$2').toLowerCase().replace(/[^a-z0-9]/g,'').replace(/ies$/,'y').replace(/s$/,'');
 const title = s => s.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[_-]/g,' ').replace(/^./, x => x.toUpperCase());
 const resourceName = s => normalize(s.replace(/(?:Public)?(?:API)?(?:Request|Response)(?:API)?(?:Entity|Model)?(?:\d+)?$/i,'').replace(/(?:Public)?(?:API)?Entity$/i,''));
+/** Path without a query-string or fragment disambiguator (`/invoice?operation=void`). */
+export const pathPart = path => String(path||'').split(/[?#]/)[0];
+/**
+ * Resource named by an ID or reference field, or undefined. `customer_id`, `customerId`
+ * and `customer_ids` match by name. A `CustomerRef`/`customer_ref` reference object
+ * (QuickBooks, NetSuite style) also matches a qualified name by its trailing resource:
+ * `DepositToAccountRef` -> Account.
+ */
+export function referenceTarget(leaf, byName) {
+  if (/(?:_id|Id|_ids|Ids)$/.test(leaf)) return byName.get(normalize(leaf.replace(/(?:_ids?|Ids?)$/,'')));
+  if (!/(?:[a-z0-9]Ref|_ref)$/.test(leaf)) return undefined;
+  const key = normalize(leaf.replace(/_?ref$/i,'')); if (!key) return undefined;
+  if (byName.has(key)) return byName.get(key);
+  const words = leaf.replace(/_?ref$/i,'').replace(/([a-z0-9])([A-Z])/g,'$1_$2').split('_').filter(Boolean);
+  for (let start = 1; start < words.length; start++) { const match = byName.get(normalize(words.slice(start).join(''))); if (match) return match; }
+  return undefined;
+}
 const methods = ['get','post','put','patch','delete','head','options','trace','connect','query','mutation','subscription','publish','subscribe','send','receive','rpc','soap','call'];
 export function parseSpec(text,url) {
   return parseApiSpecification(text,url).spec;
@@ -106,8 +123,7 @@ export function analyzeSpec(spec, url) {
     }
     for (const field of entity.fields) {
       const leaf = field.name.split('.').pop().replace(/\[\]/g,'');
-      if (!/(?:_id|Id|_ids|Ids)$/.test(leaf)) continue;
-      const name = leaf.replace(/(?:_ids?|Ids?)$/,''); const target = byName.get(normalize(name));
+      const target = referenceTarget(leaf, byName);
       if (!target) continue;
       const documented = /\b(identifier|identifies|id of|id for)\b/i.test(field.description) && normalize(field.description).includes(normalize(target.rawName));
       addDependency(target.id,entity.id,field.name,'id',field.description || `${leaf} matches the ${target.name} resource name. Verify this relationship in the API documentation.`,documented ? 'documented' : 'inferred',{sourceUrl:entity.source});
@@ -133,7 +149,7 @@ export function analyzeSpec(spec, url) {
       const entityIds = [];
       for (const entity of result.entities) {
         const exact = entityRefs.has(`${schemaPrefix}${entity.rawName}`);
-        const pathMatch = entity.kind!=='error' && path.split('/').some(p => normalize(p) === resourceName(entity.rawName));
+        const pathMatch = entity.kind!=='error' && pathPart(path).split('/').some(p => normalize(p) === resourceName(entity.rawName));
         if (exact || pathMatch) { entityIds.push(entity.id);entity.operationIds.push(operationId); if (op.tags?.[0]) entity.group = op.tags[0]; }
       }
       result.operations.push({ id:operationId,name:op.summary || op.operationId || `${method.toUpperCase()} ${path}`,operationId:op.operationId || '',method:method.toUpperCase(),path,description:clean(op.description).slice(0,800),...(op['x-atlas-webhook']?{kind:'webhook'}:{}),...(Object.keys(body.content||{})[0]?{contentType:Object.keys(body.content||{})[0]}:op.consumes?.[0]||spec.consumes?.[0]?{contentType:op.consumes?.[0]||spec.consumes?.[0]}:{}),inputs:boundedFields(inputs),outputs:boundedFields(outputs),entityIds,tags:op.tags||[],source:op['x-atlas-source']||url,security:op.security ?? spec.security ?? [],responseRefs:[...responseRefs],links:responses.flatMap(r => Object.entries(r.links || {}).map(([name,link]) => ({name,...deref(spec,link)}))) });
@@ -143,16 +159,16 @@ export function analyzeSpec(spec, url) {
     for (const input of op.inputs) {
       const field = input.name?.split('.').pop().replace(/[{}\[\]-]/g,'_'); if (!field) continue;
       let key = normalize(field.replace(/(?:_?ids?|Ids?)_?$/,''));
-      if (!key && /id/i.test(field)) key = normalize(op.path.split('/').filter(p => p && !p.startsWith('{')).at(-1));
+      if (!key && /id/i.test(field)) key = normalize(pathPart(op.path).split('/').filter(p => p && !p.startsWith('{')).at(-1));
       const resource = byName.get(key); if (!resource) continue;
       const producers = result.operations.filter(p => {
-        const pathParts=p.path.split('/').filter(part=>part&&!/^(?:api|v\d+(?:\.\d+)?|\d+(?:\.\d+)?)$/i.test(part));
+        const pathParts=pathPart(p.path).split('/').filter(part=>part&&!/^(?:api|v\d+(?:\.\d+)?|\d+(?:\.\d+)?)$/i.test(part));
         const directCollection=pathParts.length===1&&normalize(pathParts[0])===resourceName(resource.rawName);
         const createNamed=/\b(?:create|add|provision|register)\b/i.test(`${p.name} ${p.operationId.replace(/_/g,' ')}`);
         return p.id!==op.id&&p.method==='POST'&&(directCollection||createNamed)&&p.entityIds.includes(resource.id)&&p.outputs.some(f=>/(?:^|\.)[A-Za-z_]*id$/i.test(f.name))&&pathParts.some(segment=>normalize(segment)===resourceName(resource.rawName));
       });
       for (const producer of producers.slice(0,1)) {
-        const targetEntity = result.entities.find(e => op.path.split('/').filter(p => !p.startsWith('{')).some(p => normalize(p) === resourceName(e.rawName)) && e.id !== resource.id) || resource;
+        const targetEntity = result.entities.find(e => pathPart(op.path).split('/').filter(p => !p.startsWith('{')).some(p => normalize(p) === resourceName(e.rawName)) && e.id !== resource.id) || resource;
         result.dependencies.push({id:`${producer.id}>${op.id}:${input.name}`,source:resource.id,target:targetEntity.id,field:input.name,type:'operation',status:'inferred',evidence:`${op.method} ${op.path} accepts ${input.name}${input.required ? ' (required)' : ' (optional)'}. ${producer.method} ${producer.path} returns a candidate ${resource.name} identifier. Producer matching is inferred; confirm the response field and business prerequisites.`,sourceUrl:op.source,sourceOperation:producer.id,targetOperation:op.id,required:input.required});
       }
     }
